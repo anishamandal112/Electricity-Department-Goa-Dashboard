@@ -32,11 +32,17 @@ function resTimeColor(d: number) {
   return d <= 4 ? C.success : d <= 6 ? C.warning : C.error
 }
 
-function heatBg(value: number, type: 'complaint' | 'sla' | 'resolution' | 'pending'): string {
-  if (type === 'complaint')  return value < 600 ? '#DCFCE7' : value < 900 ? '#FEF9C3' : '#FEE2E2'
-  if (type === 'sla')        return value >= 90 ? '#DCFCE7' : value >= 75 ? '#FEF9C3' : '#FEE2E2'
-  if (type === 'resolution') return value <= 4  ? '#DCFCE7' : value <= 6  ? '#FEF9C3' : '#FEE2E2'
+function heatCell(value: number, metric: HeatmapMetric): string {
+  if (metric === 'complaintVolume')   return value < 600 ? '#DCFCE7' : value < 900  ? '#FEF9C3' : '#FEE2E2'
+  if (metric === 'slaCompliance')     return value >= 90 ? '#DCFCE7' : value >= 75  ? '#FEF9C3' : '#FEE2E2'
+  if (metric === 'resolutionTime')    return value <= 4  ? '#DCFCE7' : value <= 6   ? '#FEF9C3' : '#FEE2E2'
   return value < 60 ? '#DCFCE7' : value < 100 ? '#FEF9C3' : '#FEE2E2'
+}
+
+function formatCell(value: number, metric: HeatmapMetric): string {
+  if (metric === 'slaCompliance')  return `${value}%`
+  if (metric === 'resolutionTime') return `${value}d`
+  return String(value)
 }
 
 // ── Complaints Dashboard ─────────────────────────────────────────────────────
@@ -241,46 +247,88 @@ function ConsumerAnalyticsSection({ filters }: { filters: Filters }) {
 }
 
 // ── Division Performance Heatmap ─────────────────────────────────────────────
-const HEATMAP_COLS = ['Complaint Volume', 'SLA Compliance %', 'Avg Resolution (Days)', 'Pending Cases']
+const METRIC_OPTIONS: { value: HeatmapMetric; label: string }[] = [
+  { value: 'complaintVolume',   label: 'Complaint Volume'    },
+  { value: 'slaCompliance',     label: 'SLA Compliance %'    },
+  { value: 'resolutionTime',    label: 'Avg Resolution Time' },
+  { value: 'pendingComplaints', label: 'Pending Complaints'  },
+]
 
 function DivisionHeatmap({ filters }: { filters: Filters }) {
-  const data = useMemo(() => getDivisionHeatmapData(filters), [filters])
+  const [metric, setMetric] = useState<HeatmapMetric>('complaintVolume')
+  const data = useMemo(() => getDivisionMonthHeatmapData(filters, metric), [filters, metric])
+
+  const cellMap = useMemo(() => {
+    const m: Record<string, Record<string, number>> = {}
+    for (const cell of data) {
+      if (!m[cell.division]) m[cell.division] = {}
+      m[cell.division][cell.month] = cell.value
+    }
+    return m
+  }, [data])
+
+  const divisions = [...new Set(data.map((c) => c.division))]
 
   return (
     <div className="bg-surface border border-border-base rounded-xl shadow-sm overflow-hidden">
-      <div className="px-4 py-3 border-b border-border-base">
-        <h3 className="text-[14px] font-semibold text-text-primary">Division Performance Heatmap</h3>
-        <p className="text-[12px] text-text-secondary mt-0.5">
-          Green / Amber / Red by performance threshold
-        </p>
+      <div className="px-4 py-3 border-b border-border-base flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h3 className="text-[14px] font-semibold text-text-primary">Division Performance Heatmap</h3>
+          <p className="text-[12px] text-text-secondary mt-0.5">
+            All 18 divisions × 12 months — Green good, Amber watch, Red poor
+          </p>
+        </div>
+        <div className="flex gap-1.5 flex-wrap">
+          {METRIC_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => setMetric(opt.value)}
+              className={`px-3 py-1 text-[11px] font-semibold rounded-full border transition-colors ${
+                metric === opt.value
+                  ? 'bg-primary text-white border-primary'
+                  : 'bg-transparent text-text-secondary border-border-base hover:text-text-primary'
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
       </div>
+
       <div className="overflow-x-auto p-4">
-        <div className="grid" style={{ gridTemplateColumns: '160px repeat(4, 1fr)', minWidth: 580 }}>
+        <div
+          className="grid"
+          style={{ gridTemplateColumns: '160px repeat(12, 1fr)', minWidth: 900 }}
+        >
+          {/* Header row */}
           <div />
-          {HEATMAP_COLS.map((m) => (
-            <div key={m} className="text-[11px] font-semibold text-text-secondary uppercase tracking-wide text-center pb-3 px-2">
+          {MONTHS.map((m) => (
+            <div key={m} className="text-center text-[10px] font-semibold uppercase tracking-wide text-text-secondary pb-2 px-0.5">
               {m}
             </div>
           ))}
-          {data.map((row) => (
-            <React.Fragment key={row.division}>
-              <div className="text-[13px] font-medium text-text-primary py-3 pr-4 flex items-center border-t border-border-base">
-                {row.division}
+
+          {/* Data rows */}
+          {divisions.map((div) => (
+            <React.Fragment key={div}>
+              <div
+                className="text-[12px] font-medium text-text-primary py-1.5 pr-3 flex items-center border-t border-border-base"
+                style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+              >
+                {div}
               </div>
-              {([
-                { val: row.complaintVolume, type: 'complaint'  as const, fmt: (v: number) => v.toLocaleString() },
-                { val: row.slaCompliance,   type: 'sla'        as const, fmt: (v: number) => `${v}%`           },
-                { val: row.resolutionTime,  type: 'resolution' as const, fmt: (v: number) => `${v}d`           },
-                { val: row.pendingCases,    type: 'pending'    as const, fmt: (v: number) => String(v)         },
-              ] as const).map(({ val, type, fmt }) => (
-                <div
-                  key={type}
-                  className="py-3 px-2 text-center text-[13px] font-semibold border-t border-border-base mx-1 rounded"
-                  style={{ backgroundColor: heatBg(val, type), color: '#111827' }}
-                >
-                  {fmt(val)}
-                </div>
-              ))}
+              {MONTHS.map((month) => {
+                const value = cellMap[div]?.[month] ?? 0
+                return (
+                  <div
+                    key={month}
+                    className="py-1.5 text-center text-[10px] font-semibold border-t border-border-base mx-0.5 rounded"
+                    style={{ backgroundColor: heatCell(value, metric), color: '#111827' }}
+                  >
+                    {formatCell(value, metric)}
+                  </div>
+                )
+              })}
             </React.Fragment>
           ))}
         </div>
