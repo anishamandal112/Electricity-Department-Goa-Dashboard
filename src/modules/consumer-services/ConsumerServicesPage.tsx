@@ -13,7 +13,7 @@ import { KpiCard } from '../../components/ui/KpiCard'
 import { ChartCard } from '../../components/ui/ChartCard'
 import {
   getKpiData, getComplaintTrend, getCategoryDistribution,
-  getSlaTrend, getResTimeTrend,
+  getResTimeTrend,
   getServiceVolumeByType, getServiceProcessingTime, getServiceRequestStatusMatrix,
   getConnectionsTrend, getConsumerCategoryDist,
   getDivisionMonthHeatmapData, getDivisionTableData, getInsights,
@@ -482,7 +482,7 @@ function EnhancedTable({ filters }: { filters: Filters }) {
   )
 }
 
-// ── Insights & Exceptions ────────────────────────────────────────────────────
+// ── Attention Required ───────────────────────────────────────────────────────
 const INSIGHT_ICONS = {
   'trending-up':    TrendingUp,
   'alert-triangle': AlertTriangle,
@@ -491,26 +491,26 @@ const INSIGHT_ICONS = {
   'timer':          Timer,
 } as const
 
-function InsightsSection({ filters }: { filters: Filters }) {
-  const insights = useMemo(() => getInsights(filters), [filters])
+function AttentionRequiredSection({ filters }: { filters: Filters }) {
+  const alerts = useMemo(() => getInsights(filters), [filters])
   return (
     <div className="grid grid-cols-5 gap-4">
-      {insights.map((insight) => {
-        const Icon    = INSIGHT_ICONS[insight.icon]
-        const isError = insight.severity === 'error'
+      {alerts.map((alert) => {
+        const Icon    = INSIGHT_ICONS[alert.icon]
+        const isError = alert.severity === 'error'
         return (
           <div
-            key={insight.id}
-            className={`bg-surface border rounded-xl p-4 ${isError ? 'border-error' : 'border-warning'}`}
+            key={alert.id}
+            className={`bg-surface border rounded-xl p-4 ${isError ? 'border-error/40' : 'border-warning/40'}`}
           >
             <div className={`flex items-center gap-2 mb-2 ${isError ? 'text-error' : 'text-warning'}`}>
               <Icon size={14} />
-              <span className="text-[11px] font-semibold uppercase tracking-wide leading-tight">
-                {insight.label}
+              <span className="text-[10px] font-semibold uppercase tracking-wide leading-tight">
+                {alert.label}
               </span>
             </div>
-            <p className="text-[15px] font-bold text-text-primary leading-tight">{insight.value}</p>
-            <p className="text-[12px] text-text-secondary mt-1">{insight.context}</p>
+            <p className="text-[15px] font-bold text-text-primary leading-tight">{alert.value}</p>
+            <p className="text-[12px] text-text-secondary mt-1">{alert.context}</p>
           </div>
         )
       })}
@@ -582,8 +582,8 @@ export function ConsumerServicesPage() {
           <EnhancedTable filters={filters} />
         </SectionContainer>
 
-        <SectionContainer title="Insights & Exceptions">
-          <InsightsSection filters={filters} />
+        <SectionContainer title="Attention Required">
+          <AttentionRequiredSection filters={filters} />
         </SectionContainer>
       </div>
     </div>
