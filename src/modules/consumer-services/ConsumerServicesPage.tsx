@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react'
 import {
   ResponsiveContainer, ComposedChart, Bar, Line, CartesianGrid, XAxis, YAxis,
-  Tooltip, Legend, PieChart, Pie, Cell, BarChart, AreaChart, Area,
+  Tooltip, Legend, PieChart, Pie, Cell, BarChart,
   RadialBarChart, RadialBar, LineChart, ReferenceLine,
 } from 'recharts'
 import { TrendingUp, AlertTriangle, Clock, Zap, Timer, ChevronUp, ChevronDown, Search } from 'lucide-react'
@@ -12,13 +12,13 @@ import { SectionContainer } from '../../components/ui/SectionContainer'
 import { KpiCard } from '../../components/ui/KpiCard'
 import { ChartCard } from '../../components/ui/ChartCard'
 import {
-  getKpiData, getComplaintTrend, getCategoryDistribution, getComplaintStatus,
-  getBacklogTrend, getSlaTrend, getResTimeTrend, getDivisionSlaRanking,
-  getServiceVolumeByType, getServiceRequestFunnel, getServiceProcessingTime,
-  getConsumerGrowthTrend, getConnectionsTrend, getConsumerCategoryDist,
-  getDivisionHeatmapData, getDivisionTableData, getInsights,
-  slaColor,
-  type Filters, type TableRow,
+  getKpiData, getComplaintTrend, getCategoryDistribution,
+  getSlaTrend, getResTimeTrend,
+  getServiceVolumeByType, getServiceProcessingTime, getServiceRequestStatusMatrix,
+  getConnectionsTrend, getConsumerCategoryDist,
+  getDivisionMonthHeatmapData, getDivisionTableData, getInsights,
+  MONTHS,
+  type HeatmapMetric, type Filters, type TableRow,
 } from './mockData'
 
 const C = {
@@ -43,70 +43,37 @@ function heatBg(value: number, type: 'complaint' | 'sla' | 'resolution' | 'pendi
 function ComplaintsSection({ filters }: { filters: Filters }) {
   const trend      = useMemo(() => getComplaintTrend(filters),       [filters])
   const categories = useMemo(() => getCategoryDistribution(filters), [filters])
-  const status     = useMemo(() => getComplaintStatus(filters),      [filters])
-  const backlog    = useMemo(() => getBacklogTrend(filters),         [filters])
-
-  const statusColor: Record<string, string> = {
-    Resolved: C.success, Pending: C.warning, Escalated: C.error, Withdrawn: '#6B7280',
-  }
 
   return (
-    <>
-      <ChartCard title="Complaints Received vs Resolved" timeContext="Apr – Mar (Financial Year)">
-        <ResponsiveContainer width="100%" height={220}>
-          <ComposedChart data={trend} margin={{ top: 4, right: 16, bottom: 0, left: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke={C.grid} vertical={false} />
-            <XAxis dataKey="month" tick={ax} axisLine={false} tickLine={false} />
-            <YAxis tick={ax} axisLine={false} tickLine={false} width={48} />
-            <Tooltip contentStyle={{ fontSize: 12 }} />
-            <Legend wrapperStyle={{ fontSize: 12 }} />
-            <Bar dataKey="received" name="Received" fill={C.error} opacity={0.7} radius={[2,2,0,0]} />
-            <Line type="monotone" dataKey="resolved" name="Resolved" stroke={C.success} strokeWidth={2} dot={false} />
-          </ComposedChart>
-        </ResponsiveContainer>
-      </ChartCard>
-
-      <div className="grid grid-cols-3 gap-4 mt-4">
-        <ChartCard title="Category Distribution" timeContext="Current Period">
-          <ResponsiveContainer width="100%" height={220}>
-            <PieChart>
-              <Pie data={categories} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={55} outerRadius={85}>
-                {categories.map((c) => <Cell key={c.name} fill={c.color} />)}
-              </Pie>
-              <Tooltip contentStyle={{ fontSize: 12 }} formatter={(v: number) => v.toLocaleString()} />
-              <Legend wrapperStyle={{ fontSize: 11 }} />
-            </PieChart>
-          </ResponsiveContainer>
-        </ChartCard>
-
-        <ChartCard title="Complaint Status Breakdown" timeContext="Current Period">
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={status} layout="vertical" margin={{ left: 8, right: 24 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke={C.grid} horizontal={false} />
-              <XAxis type="number" tick={ax} axisLine={false} tickLine={false} />
-              <YAxis dataKey="name" type="category" tick={ax} axisLine={false} tickLine={false} width={72} />
-              <Tooltip contentStyle={{ fontSize: 12 }} />
-              <Bar dataKey="value" name="Count" radius={[0,2,2,0]}>
-                {status.map((s) => <Cell key={s.name} fill={statusColor[s.name] ?? '#6B7280'} />)}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </ChartCard>
-
-        <ChartCard title="Complaint Backlog Trend" timeContext="Apr – Mar (Financial Year)">
-          <ResponsiveContainer width="100%" height={220}>
-            <AreaChart data={backlog} margin={{ top: 4, right: 16, bottom: 0, left: 0 }}>
+    <div className="grid grid-cols-3 gap-4">
+      <div className="col-span-2">
+        <ChartCard title="Complaints Received vs Resolved" timeContext="Apr – Mar (Financial Year)">
+          <ResponsiveContainer width="100%" height={260}>
+            <ComposedChart data={trend} margin={{ top: 4, right: 16, bottom: 0, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke={C.grid} vertical={false} />
               <XAxis dataKey="month" tick={ax} axisLine={false} tickLine={false} />
-              <YAxis tick={ax} axisLine={false} tickLine={false} width={40} />
+              <YAxis tick={ax} axisLine={false} tickLine={false} width={48} />
               <Tooltip contentStyle={{ fontSize: 12 }} />
-              <Area type="monotone" dataKey="backlog" name="Open Complaints"
-                stroke={C.warning} fill={C.warning} fillOpacity={0.15} strokeWidth={2} dot={false} />
-            </AreaChart>
+              <Legend wrapperStyle={{ fontSize: 12 }} />
+              <Bar dataKey="received" name="Received" fill={C.error} opacity={0.65} radius={[2,2,0,0]} />
+              <Line type="monotone" dataKey="resolved" name="Resolved" stroke={C.primary} strokeWidth={2} dot={false} />
+            </ComposedChart>
           </ResponsiveContainer>
         </ChartCard>
       </div>
-    </>
+
+      <ChartCard title="Category Distribution" timeContext="Current Period">
+        <ResponsiveContainer width="100%" height={260}>
+          <PieChart>
+            <Pie data={categories} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={55} outerRadius={85}>
+              {categories.map((c) => <Cell key={c.name} fill={c.color} />)}
+            </Pie>
+            <Tooltip contentStyle={{ fontSize: 12 }} formatter={(v: number) => v.toLocaleString()} />
+            <Legend wrapperStyle={{ fontSize: 11 }} />
+          </PieChart>
+        </ResponsiveContainer>
+      </ChartCard>
+    </div>
   )
 }
 
