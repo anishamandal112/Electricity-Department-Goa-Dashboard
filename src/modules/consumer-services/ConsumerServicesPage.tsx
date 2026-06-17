@@ -127,67 +127,77 @@ function SlaSection({ filters }: { filters: Filters }) {
 
 // ── Service Requests ─────────────────────────────────────────────────────────
 function ServiceRequestsSection({ filters }: { filters: Filters }) {
-  const volume   = useMemo(() => getServiceVolumeByType(filters),   [filters])
-  const funnel   = useMemo(() => getServiceRequestFunnel(filters),  [filters])
-  const procTime = useMemo(() => getServiceProcessingTime(filters), [filters])
-
-  const funnelStages = [
-    { label: 'Submitted',  value: funnel.submitted, pct: 100 },
-    { label: 'In Process', value: funnel.inProcess, pct: Math.round(funnel.inProcess / funnel.submitted * 100) },
-    { label: 'Completed',  value: funnel.completed, pct: Math.round(funnel.completed / funnel.submitted * 100) },
-  ]
+  const volume   = useMemo(() => getServiceVolumeByType(filters),       [filters])
+  const procTime = useMemo(() => getServiceProcessingTime(filters),      [filters])
+  const matrix   = useMemo(() => getServiceRequestStatusMatrix(filters), [filters])
 
   return (
-    <div className="grid grid-cols-3 gap-4">
-      <ChartCard title="Request Volume by Type" timeContext="Current Period">
-        <ResponsiveContainer width="100%" height={220}>
-          <BarChart data={volume} margin={{ top: 4, right: 8, bottom: 56, left: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke={C.grid} vertical={false} />
-            <XAxis dataKey="type" tick={{ ...ax, textAnchor: 'end' }} angle={-35}
-              axisLine={false} tickLine={false} interval={0} height={60} />
-            <YAxis tick={ax} axisLine={false} tickLine={false} width={40} />
-            <Tooltip contentStyle={{ fontSize: 12 }} />
-            <Bar dataKey="volume" name="Requests" fill={C.primary} radius={[2,2,0,0]} />
-          </BarChart>
-        </ResponsiveContainer>
-      </ChartCard>
+    <div className="grid grid-cols-12 gap-4">
+      <div className="col-span-5">
+        <ChartCard title="Request Volume by Type" timeContext="Current Period">
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={volume} margin={{ top: 4, right: 8, bottom: 56, left: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke={C.grid} vertical={false} />
+              <XAxis dataKey="type" tick={{ ...ax, textAnchor: 'end' }} angle={-35}
+                axisLine={false} tickLine={false} interval={0} height={60} />
+              <YAxis tick={ax} axisLine={false} tickLine={false} width={40} />
+              <Tooltip contentStyle={{ fontSize: 12 }} />
+              <Bar dataKey="volume" name="Requests" fill={C.primary} radius={[2,2,0,0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartCard>
+      </div>
 
-      <ChartCard title="Processing Funnel" timeContext="Current Period">
-        <div className="flex flex-col justify-center h-[220px] px-2 gap-5">
-          {funnelStages.map((stage) => (
-            <div key={stage.label}>
-              <div className="flex justify-between mb-1">
-                <span className="text-[12px] text-text-secondary">{stage.label}</span>
-                <span className="text-[12px] font-semibold text-text-primary">
-                  {stage.value.toLocaleString()} ({stage.pct}%)
-                </span>
-              </div>
-              <div className="h-6 bg-background rounded border border-border-base overflow-hidden">
-                <div
-                  className="h-full transition-all"
-                  style={{ width: `${stage.pct}%`, backgroundColor: C.primary, opacity: 0.4 + stage.pct / 200 }}
-                />
-              </div>
-            </div>
-          ))}
-        </div>
-      </ChartCard>
+      <div className="col-span-4">
+        <ChartCard title="Avg Processing Time by Type" timeContext="Current Period">
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={procTime} layout="vertical" margin={{ left: 8, right: 32 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke={C.grid} horizontal={false} />
+              <XAxis type="number" tick={ax} axisLine={false} tickLine={false} unit="d" />
+              <YAxis dataKey="type" type="category" tick={ax} axisLine={false} tickLine={false} width={120} />
+              <Tooltip contentStyle={{ fontSize: 12 }} formatter={(v: number) => `${v} days`} />
+              <Bar dataKey="days" name="Days" radius={[0,2,2,0]}>
+                {procTime.map((p) => (
+                  <Cell key={p.type} fill={p.days <= 5 ? C.success : p.days <= 8 ? C.warning : C.error} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartCard>
+      </div>
 
-      <ChartCard title="Avg Processing Time by Type" timeContext="Current Period">
-        <ResponsiveContainer width="100%" height={220}>
-          <BarChart data={procTime} layout="vertical" margin={{ left: 8, right: 32 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke={C.grid} horizontal={false} />
-            <XAxis type="number" tick={ax} axisLine={false} tickLine={false} unit="d" />
-            <YAxis dataKey="type" type="category" tick={ax} axisLine={false} tickLine={false} width={120} />
-            <Tooltip contentStyle={{ fontSize: 12 }} formatter={(v: number) => `${v} days`} />
-            <Bar dataKey="days" name="Days" radius={[0,2,2,0]}>
-              {procTime.map((p) => (
-                <Cell key={p.type} fill={p.days <= 5 ? C.success : p.days <= 8 ? C.warning : C.error} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      </ChartCard>
+      <div className="col-span-3">
+        <ChartCard title="Request Status" timeContext="Current Period">
+          <div className="overflow-auto" style={{ maxHeight: 220 }}>
+            <table className="w-full text-[12px]">
+              <thead>
+                <tr className="border-b border-border-base">
+                  <th className="text-left pb-2 text-[10px] font-semibold uppercase tracking-wide text-text-secondary">Type</th>
+                  <th className="text-right pb-2 text-[10px] font-semibold uppercase tracking-wide text-warning">Open</th>
+                  <th className="text-right pb-2 text-[10px] font-semibold uppercase tracking-wide text-text-secondary">In Prog</th>
+                  <th className="text-right pb-2 text-[10px] font-semibold uppercase tracking-wide text-success">Done</th>
+                </tr>
+              </thead>
+              <tbody>
+                {matrix.map((row) => (
+                  <tr key={row.type} className="border-b border-border-base last:border-0">
+                    <td className="py-1.5 text-text-primary" style={{ maxWidth: 64, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {row.type}
+                    </td>
+                    <td className={`py-1.5 text-right font-semibold ${
+                      row.open > 150 ? 'text-error' : row.open > 80 ? 'text-warning' : 'text-text-primary'
+                    }`}>
+                      {row.open}
+                    </td>
+                    <td className="py-1.5 text-right text-text-secondary">{row.inProgress}</td>
+                    <td className="py-1.5 text-right font-semibold text-success">{row.completed}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </ChartCard>
+      </div>
     </div>
   )
 }
