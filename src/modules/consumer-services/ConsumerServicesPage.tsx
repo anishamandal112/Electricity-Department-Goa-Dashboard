@@ -79,15 +79,13 @@ function ComplaintsSection({ filters }: { filters: Filters }) {
 
 // ── SLA Performance ──────────────────────────────────────────────────────────
 function SlaSection({ filters }: { filters: Filters }) {
-  const kpi        = useMemo(() => getKpiData(filters),            [filters])
-  const slaTrend   = useMemo(() => getSlaTrend(filters),           [filters])
-  const rtTrend    = useMemo(() => getResTimeTrend(filters),       [filters])
-  const divRanking = useMemo(() => getDivisionSlaRanking(filters), [filters])
+  const kpi     = useMemo(() => getKpiData(filters),      [filters])
+  const rtTrend = useMemo(() => getResTimeTrend(filters), [filters])
 
   return (
-    <div className="grid grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 gap-4">
       <ChartCard title="SLA Compliance" timeContext="Current Period">
-        <div className="relative" style={{ height: 200 }}>
+        <div className="relative" style={{ height: 220 }}>
           <ResponsiveContainer width="100%" height="100%">
             <RadialBarChart
               cx="50%" cy="75%"
@@ -98,30 +96,16 @@ function SlaSection({ filters }: { filters: Filters }) {
               <RadialBar
                 dataKey="value"
                 cornerRadius={6}
-                fill={slaColor(kpi.slaCompliance)}
-                background={{ fill: '#F3F4F6' }}
+                fill={C.primary}
+                background={{ fill: '#E5E7EB' }}
               />
             </RadialBarChart>
           </ResponsiveContainer>
-          <div className="absolute inset-x-0 flex flex-col items-center" style={{ bottom: 28 }}>
-            <span className="text-[28px] font-bold text-text-primary">{kpi.slaCompliance}%</span>
-            <span className="text-[11px] text-text-secondary">Target: 90%</span>
+          <div className="absolute inset-x-0 flex flex-col items-center" style={{ bottom: 36 }}>
+            <span className="text-[30px] font-bold text-text-primary">{kpi.slaCompliance}%</span>
+            <span className="text-[11px] text-text-secondary mt-0.5">Target: 90%</span>
           </div>
         </div>
-      </ChartCard>
-
-      <ChartCard title="SLA Compliance Trend" timeContext="Apr – Mar (Financial Year)">
-        <ResponsiveContainer width="100%" height={220}>
-          <LineChart data={slaTrend} margin={{ top: 4, right: 24, bottom: 0, left: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke={C.grid} vertical={false} />
-            <XAxis dataKey="month" tick={ax} axisLine={false} tickLine={false} />
-            <YAxis domain={[60, 100]} tick={ax} axisLine={false} tickLine={false} width={36} unit="%" />
-            <Tooltip contentStyle={{ fontSize: 12 }} formatter={(v: number) => `${v}%`} />
-            <ReferenceLine y={90} stroke={C.primary} strokeDasharray="4 2"
-              label={{ value: 'Target', fill: C.primary, fontSize: 10, position: 'right' }} />
-            <Line type="monotone" dataKey="compliance" name="SLA %" stroke={C.success} strokeWidth={2} dot={{ r: 3 }} />
-          </LineChart>
-        </ResponsiveContainer>
       </ChartCard>
 
       <ChartCard title="Resolution Time Trend" timeContext="Apr – Mar (Financial Year)">
@@ -135,20 +119,6 @@ function SlaSection({ filters }: { filters: Filters }) {
               label={{ value: 'Target', fill: C.warning, fontSize: 10, position: 'right' }} />
             <Line type="monotone" dataKey="days" name="Avg Days" stroke={C.primary} strokeWidth={2} dot={{ r: 3 }} />
           </LineChart>
-        </ResponsiveContainer>
-      </ChartCard>
-
-      <ChartCard title="Division SLA Ranking" timeContext="Current Period">
-        <ResponsiveContainer width="100%" height={220}>
-          <BarChart data={divRanking} layout="vertical" margin={{ left: 8, right: 32 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke={C.grid} horizontal={false} />
-            <XAxis type="number" domain={[0, 100]} tick={ax} axisLine={false} tickLine={false} unit="%" />
-            <YAxis dataKey="division" type="category" tick={ax} axisLine={false} tickLine={false} width={88} />
-            <Tooltip contentStyle={{ fontSize: 12 }} formatter={(v: number) => `${v}%`} />
-            <Bar dataKey="compliance" name="SLA %" radius={[0,2,2,0]}>
-              {divRanking.map((d) => <Cell key={d.division} fill={d.fill} />)}
-            </Bar>
-          </BarChart>
         </ResponsiveContainer>
       </ChartCard>
     </div>
