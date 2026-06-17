@@ -1,64 +1,607 @@
+import React, { useMemo, useState } from 'react'
+import {
+  ResponsiveContainer, ComposedChart, Bar, Line, CartesianGrid, XAxis, YAxis,
+  Tooltip, Legend, PieChart, Pie, Cell, BarChart, AreaChart, Area,
+  RadialBarChart, RadialBar, LineChart, ReferenceLine,
+} from 'recharts'
+import { TrendingUp, AlertTriangle, Clock, Zap, Timer, ChevronUp, ChevronDown, Search } from 'lucide-react'
+import { useFilterStore } from '../../store/filterStore'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { GlobalFilterBar } from '../../components/filters/GlobalFilterBar'
 import { SectionContainer } from '../../components/ui/SectionContainer'
 import { KpiCard } from '../../components/ui/KpiCard'
 import { ChartCard } from '../../components/ui/ChartCard'
-import { DataTableCard } from '../../components/ui/DataTableCard'
+import {
+  getKpiData, getComplaintTrend, getCategoryDistribution, getComplaintStatus,
+  getBacklogTrend, getSlaTrend, getResTimeTrend, getDivisionSlaRanking,
+  getServiceVolumeByType, getServiceRequestFunnel, getServiceProcessingTime,
+  getConsumerGrowthTrend, getConnectionsTrend, getConsumerCategoryDist,
+  getDivisionHeatmapData, getDivisionTableData, getInsights,
+  slaColor,
+  type Filters, type TableRow,
+} from './mockData'
 
-const KPIS = [
-  { label: 'Total Consumers', value: '2,86,420', trend: '1,243', trendDirection: 'up' as const, trendIsPositive: true, comparisonLabel: 'new this month' },
-  { label: 'New Connections', value: '1,243', trend: '87', trendDirection: 'up' as const, trendIsPositive: true, comparisonLabel: 'vs Last Month' },
-  { label: 'Pending Grievances', value: '347', trend: '62', trendDirection: 'down' as const, trendIsPositive: true, comparisonLabel: 'vs Last Month' },
-  { label: 'Avg Resolution (Days)', value: '4.2', trend: '0.8 days', trendDirection: 'down' as const, trendIsPositive: true, comparisonLabel: 'vs Last Month' },
-]
+const C = {
+  primary: '#2563EB', success: '#16A34A', warning: '#F59E0B',
+  error: '#DC2626', purple: '#7C3AED', cyan: '#0891B2', orange: '#EA580C',
+  grid: '#E5E7EB',
+}
+const ax = { fontSize: 11, fill: '#6B7280' }
 
-const COLUMNS = [
-  { key: 'division', label: 'Division' },
-  { key: 'consumers', label: 'Total Consumers' },
-  { key: 'newConn', label: 'New Connections' },
-  { key: 'grievances', label: 'Grievances' },
-  { key: 'resolved', label: 'Resolved %' },
-]
+function resTimeColor(d: number) {
+  return d <= 4 ? C.success : d <= 6 ? C.warning : C.error
+}
 
-function ChartPlaceholder({ label }: { label: string }) {
+function heatBg(value: number, type: 'complaint' | 'sla' | 'resolution' | 'pending'): string {
+  if (type === 'complaint')  return value < 600 ? '#DCFCE7' : value < 900 ? '#FEF9C3' : '#FEE2E2'
+  if (type === 'sla')        return value >= 90 ? '#DCFCE7' : value >= 75 ? '#FEF9C3' : '#FEE2E2'
+  if (type === 'resolution') return value <= 4  ? '#DCFCE7' : value <= 6  ? '#FEF9C3' : '#FEE2E2'
+  return value < 60 ? '#DCFCE7' : value < 100 ? '#FEF9C3' : '#FEE2E2'
+}
+
+// ── Complaints Dashboard ─────────────────────────────────────────────────────
+function ComplaintsSection({ filters }: { filters: Filters }) {
+  const trend      = useMemo(() => getComplaintTrend(filters),       [filters])
+  const categories = useMemo(() => getCategoryDistribution(filters), [filters])
+  const status     = useMemo(() => getComplaintStatus(filters),      [filters])
+  const backlog    = useMemo(() => getBacklogTrend(filters),         [filters])
+
+  const statusColor: Record<string, string> = {
+    Resolved: C.success, Pending: C.warning, Escalated: C.error, Withdrawn: '#6B7280',
+  }
+
   return (
-    <div className="h-52 flex items-center justify-center bg-background rounded-lg text-text-secondary text-[13px]">
-      {label}
+    <>
+      <ChartCard title="Complaints Received vs Resolved" timeContext="Apr – Mar (Financial Year)">
+        <ResponsiveContainer width="100%" height={220}>
+          <ComposedChart data={trend} margin={{ top: 4, right: 16, bottom: 0, left: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke={C.grid} vertical={false} />
+            <XAxis dataKey="month" tick={ax} axisLine={false} tickLine={false} />
+            <YAxis tick={ax} axisLine={false} tickLine={false} width={48} />
+            <Tooltip contentStyle={{ fontSize: 12 }} />
+            <Legend wrapperStyle={{ fontSize: 12 }} />
+            <Bar dataKey="received" name="Received" fill={C.error} opacity={0.7} radius={[2,2,0,0]} />
+            <Line type="monotone" dataKey="resolved" name="Resolved" stroke={C.success} strokeWidth={2} dot={false} />
+          </ComposedChart>
+        </ResponsiveContainer>
+      </ChartCard>
+
+      <div className="grid grid-cols-3 gap-4 mt-4">
+        <ChartCard title="Category Distribution" timeContext="Current Period">
+          <ResponsiveContainer width="100%" height={220}>
+            <PieChart>
+              <Pie data={categories} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={55} outerRadius={85}>
+                {categories.map((c) => <Cell key={c.name} fill={c.color} />)}
+              </Pie>
+              <Tooltip contentStyle={{ fontSize: 12 }} formatter={(v: number) => v.toLocaleString()} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+            </PieChart>
+          </ResponsiveContainer>
+        </ChartCard>
+
+        <ChartCard title="Complaint Status Breakdown" timeContext="Current Period">
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={status} layout="vertical" margin={{ left: 8, right: 24 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke={C.grid} horizontal={false} />
+              <XAxis type="number" tick={ax} axisLine={false} tickLine={false} />
+              <YAxis dataKey="name" type="category" tick={ax} axisLine={false} tickLine={false} width={72} />
+              <Tooltip contentStyle={{ fontSize: 12 }} />
+              <Bar dataKey="value" name="Count" radius={[0,2,2,0]}>
+                {status.map((s) => <Cell key={s.name} fill={statusColor[s.name] ?? '#6B7280'} />)}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartCard>
+
+        <ChartCard title="Complaint Backlog Trend" timeContext="Apr – Mar (Financial Year)">
+          <ResponsiveContainer width="100%" height={220}>
+            <AreaChart data={backlog} margin={{ top: 4, right: 16, bottom: 0, left: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke={C.grid} vertical={false} />
+              <XAxis dataKey="month" tick={ax} axisLine={false} tickLine={false} />
+              <YAxis tick={ax} axisLine={false} tickLine={false} width={40} />
+              <Tooltip contentStyle={{ fontSize: 12 }} />
+              <Area type="monotone" dataKey="backlog" name="Open Complaints"
+                stroke={C.warning} fill={C.warning} fillOpacity={0.15} strokeWidth={2} dot={false} />
+            </AreaChart>
+          </ResponsiveContainer>
+        </ChartCard>
+      </div>
+    </>
+  )
+}
+
+// ── SLA Performance ──────────────────────────────────────────────────────────
+function SlaSection({ filters }: { filters: Filters }) {
+  const kpi        = useMemo(() => getKpiData(filters),            [filters])
+  const slaTrend   = useMemo(() => getSlaTrend(filters),           [filters])
+  const rtTrend    = useMemo(() => getResTimeTrend(filters),       [filters])
+  const divRanking = useMemo(() => getDivisionSlaRanking(filters), [filters])
+
+  return (
+    <div className="grid grid-cols-4 gap-4">
+      <ChartCard title="SLA Compliance" timeContext="Current Period">
+        <div className="relative" style={{ height: 200 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <RadialBarChart
+              cx="50%" cy="75%"
+              innerRadius="55%" outerRadius="80%"
+              startAngle={180} endAngle={0}
+              data={[{ value: kpi.slaCompliance }]}
+            >
+              <RadialBar
+                dataKey="value"
+                cornerRadius={6}
+                fill={slaColor(kpi.slaCompliance)}
+                background={{ fill: '#F3F4F6' }}
+              />
+            </RadialBarChart>
+          </ResponsiveContainer>
+          <div className="absolute inset-x-0 flex flex-col items-center" style={{ bottom: 28 }}>
+            <span className="text-[28px] font-bold text-text-primary">{kpi.slaCompliance}%</span>
+            <span className="text-[11px] text-text-secondary">Target: 90%</span>
+          </div>
+        </div>
+      </ChartCard>
+
+      <ChartCard title="SLA Compliance Trend" timeContext="Apr – Mar (Financial Year)">
+        <ResponsiveContainer width="100%" height={220}>
+          <LineChart data={slaTrend} margin={{ top: 4, right: 24, bottom: 0, left: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke={C.grid} vertical={false} />
+            <XAxis dataKey="month" tick={ax} axisLine={false} tickLine={false} />
+            <YAxis domain={[60, 100]} tick={ax} axisLine={false} tickLine={false} width={36} unit="%" />
+            <Tooltip contentStyle={{ fontSize: 12 }} formatter={(v: number) => `${v}%`} />
+            <ReferenceLine y={90} stroke={C.primary} strokeDasharray="4 2"
+              label={{ value: 'Target', fill: C.primary, fontSize: 10, position: 'right' }} />
+            <Line type="monotone" dataKey="compliance" name="SLA %" stroke={C.success} strokeWidth={2} dot={{ r: 3 }} />
+          </LineChart>
+        </ResponsiveContainer>
+      </ChartCard>
+
+      <ChartCard title="Resolution Time Trend" timeContext="Apr – Mar (Financial Year)">
+        <ResponsiveContainer width="100%" height={220}>
+          <LineChart data={rtTrend} margin={{ top: 4, right: 24, bottom: 0, left: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke={C.grid} vertical={false} />
+            <XAxis dataKey="month" tick={ax} axisLine={false} tickLine={false} />
+            <YAxis domain={[0, 10]} tick={ax} axisLine={false} tickLine={false} width={36} unit="d" />
+            <Tooltip contentStyle={{ fontSize: 12 }} formatter={(v: number) => `${v} days`} />
+            <ReferenceLine y={5} stroke={C.warning} strokeDasharray="4 2"
+              label={{ value: 'Target', fill: C.warning, fontSize: 10, position: 'right' }} />
+            <Line type="monotone" dataKey="days" name="Avg Days" stroke={C.primary} strokeWidth={2} dot={{ r: 3 }} />
+          </LineChart>
+        </ResponsiveContainer>
+      </ChartCard>
+
+      <ChartCard title="Division SLA Ranking" timeContext="Current Period">
+        <ResponsiveContainer width="100%" height={220}>
+          <BarChart data={divRanking} layout="vertical" margin={{ left: 8, right: 32 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke={C.grid} horizontal={false} />
+            <XAxis type="number" domain={[0, 100]} tick={ax} axisLine={false} tickLine={false} unit="%" />
+            <YAxis dataKey="division" type="category" tick={ax} axisLine={false} tickLine={false} width={88} />
+            <Tooltip contentStyle={{ fontSize: 12 }} formatter={(v: number) => `${v}%`} />
+            <Bar dataKey="compliance" name="SLA %" radius={[0,2,2,0]}>
+              {divRanking.map((d) => <Cell key={d.division} fill={d.fill} />)}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </ChartCard>
     </div>
   )
 }
 
+// ── Service Requests ─────────────────────────────────────────────────────────
+function ServiceRequestsSection({ filters }: { filters: Filters }) {
+  const volume   = useMemo(() => getServiceVolumeByType(filters),   [filters])
+  const funnel   = useMemo(() => getServiceRequestFunnel(filters),  [filters])
+  const procTime = useMemo(() => getServiceProcessingTime(filters), [filters])
+
+  const funnelStages = [
+    { label: 'Submitted',  value: funnel.submitted, pct: 100 },
+    { label: 'In Process', value: funnel.inProcess, pct: Math.round(funnel.inProcess / funnel.submitted * 100) },
+    { label: 'Completed',  value: funnel.completed, pct: Math.round(funnel.completed / funnel.submitted * 100) },
+  ]
+
+  return (
+    <div className="grid grid-cols-3 gap-4">
+      <ChartCard title="Request Volume by Type" timeContext="Current Period">
+        <ResponsiveContainer width="100%" height={220}>
+          <BarChart data={volume} margin={{ top: 4, right: 8, bottom: 56, left: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke={C.grid} vertical={false} />
+            <XAxis dataKey="type" tick={{ ...ax, textAnchor: 'end' }} angle={-35}
+              axisLine={false} tickLine={false} interval={0} height={60} />
+            <YAxis tick={ax} axisLine={false} tickLine={false} width={40} />
+            <Tooltip contentStyle={{ fontSize: 12 }} />
+            <Bar dataKey="volume" name="Requests" fill={C.primary} radius={[2,2,0,0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </ChartCard>
+
+      <ChartCard title="Processing Funnel" timeContext="Current Period">
+        <div className="flex flex-col justify-center h-[220px] px-2 gap-5">
+          {funnelStages.map((stage) => (
+            <div key={stage.label}>
+              <div className="flex justify-between mb-1">
+                <span className="text-[12px] text-text-secondary">{stage.label}</span>
+                <span className="text-[12px] font-semibold text-text-primary">
+                  {stage.value.toLocaleString()} ({stage.pct}%)
+                </span>
+              </div>
+              <div className="h-6 bg-background rounded border border-border-base overflow-hidden">
+                <div
+                  className="h-full transition-all"
+                  style={{ width: `${stage.pct}%`, backgroundColor: C.primary, opacity: 0.4 + stage.pct / 200 }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      </ChartCard>
+
+      <ChartCard title="Avg Processing Time by Type" timeContext="Current Period">
+        <ResponsiveContainer width="100%" height={220}>
+          <BarChart data={procTime} layout="vertical" margin={{ left: 8, right: 32 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke={C.grid} horizontal={false} />
+            <XAxis type="number" tick={ax} axisLine={false} tickLine={false} unit="d" />
+            <YAxis dataKey="type" type="category" tick={ax} axisLine={false} tickLine={false} width={120} />
+            <Tooltip contentStyle={{ fontSize: 12 }} formatter={(v: number) => `${v} days`} />
+            <Bar dataKey="days" name="Days" radius={[0,2,2,0]}>
+              {procTime.map((p) => (
+                <Cell key={p.type} fill={p.days <= 5 ? C.success : p.days <= 8 ? C.warning : C.error} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </ChartCard>
+    </div>
+  )
+}
+
+// ── Consumer Analytics ───────────────────────────────────────────────────────
+function ConsumerAnalyticsSection({ filters }: { filters: Filters }) {
+  const growth      = useMemo(() => getConsumerGrowthTrend(filters), [filters])
+  const connections = useMemo(() => getConnectionsTrend(filters),    [filters])
+  const categories  = useMemo(() => getConsumerCategoryDist(filters),[filters])
+
+  return (
+    <div className="grid grid-cols-3 gap-4">
+      <ChartCard title="Consumer Growth Trend" timeContext="Apr – Mar (Financial Year)">
+        <ResponsiveContainer width="100%" height={220}>
+          <AreaChart data={growth} margin={{ top: 4, right: 16, bottom: 0, left: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke={C.grid} vertical={false} />
+            <XAxis dataKey="month" tick={ax} axisLine={false} tickLine={false} />
+            <YAxis tick={ax} axisLine={false} tickLine={false} width={52}
+              tickFormatter={(v) => `${Math.round(v / 1000)}K`} />
+            <Tooltip contentStyle={{ fontSize: 12 }} formatter={(v: number) => v.toLocaleString()} />
+            <Area type="monotone" dataKey="consumers" name="Total Consumers"
+              stroke={C.primary} fill={C.primary} fillOpacity={0.12} strokeWidth={2} dot={false} />
+          </AreaChart>
+        </ResponsiveContainer>
+      </ChartCard>
+
+      <ChartCard title="New Connections vs Disconnections" timeContext="Apr – Mar (Financial Year)">
+        <ResponsiveContainer width="100%" height={220}>
+          <BarChart data={connections} margin={{ top: 4, right: 16, bottom: 0, left: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke={C.grid} vertical={false} />
+            <XAxis dataKey="month" tick={ax} axisLine={false} tickLine={false} />
+            <YAxis tick={ax} axisLine={false} tickLine={false} width={40} />
+            <Tooltip contentStyle={{ fontSize: 12 }} />
+            <Legend wrapperStyle={{ fontSize: 11 }} />
+            <Bar dataKey="newConnections"  name="New Connections" fill={C.success} radius={[2,2,0,0]} />
+            <Bar dataKey="disconnections"  name="Disconnections"  fill={C.error}   radius={[2,2,0,0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </ChartCard>
+
+      <ChartCard title="Consumer Category Distribution" timeContext="Current Period">
+        <ResponsiveContainer width="100%" height={220}>
+          <PieChart>
+            <Pie data={categories} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={55} outerRadius={85}>
+              {categories.map((c) => <Cell key={c.name} fill={c.color} />)}
+            </Pie>
+            <Tooltip contentStyle={{ fontSize: 12 }} formatter={(v: number) => `${v}%`} />
+            <Legend wrapperStyle={{ fontSize: 11 }} />
+          </PieChart>
+        </ResponsiveContainer>
+      </ChartCard>
+    </div>
+  )
+}
+
+// ── Division Performance Heatmap ─────────────────────────────────────────────
+const HEATMAP_COLS = ['Complaint Volume', 'SLA Compliance %', 'Avg Resolution (Days)', 'Pending Cases']
+
+function DivisionHeatmap({ filters }: { filters: Filters }) {
+  const data = useMemo(() => getDivisionHeatmapData(filters), [filters])
+
+  return (
+    <div className="bg-surface border border-border-base rounded-xl shadow-sm overflow-hidden">
+      <div className="px-4 py-3 border-b border-border-base">
+        <h3 className="text-[14px] font-semibold text-text-primary">Division Performance Heatmap</h3>
+        <p className="text-[12px] text-text-secondary mt-0.5">
+          Green / Amber / Red by performance threshold
+        </p>
+      </div>
+      <div className="overflow-x-auto p-4">
+        <div className="grid" style={{ gridTemplateColumns: '160px repeat(4, 1fr)', minWidth: 580 }}>
+          <div />
+          {HEATMAP_COLS.map((m) => (
+            <div key={m} className="text-[11px] font-semibold text-text-secondary uppercase tracking-wide text-center pb-3 px-2">
+              {m}
+            </div>
+          ))}
+          {data.map((row) => (
+            <React.Fragment key={row.division}>
+              <div className="text-[13px] font-medium text-text-primary py-3 pr-4 flex items-center border-t border-border-base">
+                {row.division}
+              </div>
+              {([
+                { val: row.complaintVolume, type: 'complaint'  as const, fmt: (v: number) => v.toLocaleString() },
+                { val: row.slaCompliance,   type: 'sla'        as const, fmt: (v: number) => `${v}%`           },
+                { val: row.resolutionTime,  type: 'resolution' as const, fmt: (v: number) => `${v}d`           },
+                { val: row.pendingCases,    type: 'pending'    as const, fmt: (v: number) => String(v)         },
+              ] as const).map(({ val, type, fmt }) => (
+                <div
+                  key={type}
+                  className="py-3 px-2 text-center text-[13px] font-semibold border-t border-border-base mx-1 rounded"
+                  style={{ backgroundColor: heatBg(val, type), color: '#111827' }}
+                >
+                  {fmt(val)}
+                </div>
+              ))}
+            </React.Fragment>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Division Operations Table ────────────────────────────────────────────────
+type SortDir = 'asc' | 'desc'
+type SortKey = keyof TableRow
+
+const TABLE_COLS: { key: SortKey; label: string }[] = [
+  { key: 'division',        label: 'Division'   },
+  { key: 'consumers',       label: 'Consumers'  },
+  { key: 'complaints',      label: 'Complaints' },
+  { key: 'resolved',        label: 'Resolved'   },
+  { key: 'pending',         label: 'Pending'    },
+  { key: 'slaPercent',      label: 'SLA %'      },
+  { key: 'resolutionTime',  label: 'Avg Days'   },
+  { key: 'newConnections',  label: 'New Conn.'  },
+  { key: 'serviceRequests', label: 'Svc Req.'   },
+]
+
+function EnhancedTable({ filters }: { filters: Filters }) {
+  const data = useMemo(() => getDivisionTableData(filters), [filters])
+  const [sortKey, setSortKey] = useState<SortKey>('division')
+  const [sortDir, setSortDir] = useState<SortDir>('asc')
+  const [search,  setSearch]  = useState('')
+  const [page,    setPage]    = useState(0)
+  const PAGE_SIZE = 5
+
+  function handleSort(key: SortKey) {
+    if (key === sortKey) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    else { setSortKey(key); setSortDir('asc') }
+  }
+
+  const filtered = useMemo(
+    () => data.filter((r) => r.division.toLowerCase().includes(search.toLowerCase())),
+    [data, search],
+  )
+
+  const sorted = useMemo(() => {
+    return [...filtered].sort((a, b) => {
+      const av = a[sortKey], bv = b[sortKey]
+      const cmp = typeof av === 'string'
+        ? (av as string).localeCompare(bv as string)
+        : (av as number) - (bv as number)
+      return sortDir === 'asc' ? cmp : -cmp
+    })
+  }, [filtered, sortKey, sortDir])
+
+  const paged      = sorted.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
+  const totalPages = Math.ceil(sorted.length / PAGE_SIZE)
+
+  return (
+    <div className="bg-surface border border-border-base rounded-xl shadow-sm">
+      <div className="px-4 py-3 border-b border-border-base flex items-center justify-between gap-4">
+        <h3 className="text-[14px] font-semibold text-text-primary">Division Operations Summary</h3>
+        <div className="relative">
+          <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-secondary" />
+          <input
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(0) }}
+            placeholder="Search division…"
+            className="pl-8 pr-3 py-1.5 text-[12px] border border-border-base rounded-lg bg-background text-text-primary focus:outline-none focus:ring-1 focus:ring-primary w-48"
+          />
+        </div>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-[13px]">
+          <thead>
+            <tr className="border-b border-border-base bg-background">
+              {TABLE_COLS.map((col) => (
+                <th
+                  key={col.key}
+                  onClick={() => handleSort(col.key)}
+                  className="text-left px-4 py-2.5 text-[11px] font-semibold text-text-secondary uppercase tracking-wide whitespace-nowrap cursor-pointer hover:text-text-primary select-none"
+                >
+                  <span className="inline-flex items-center gap-1">
+                    {col.label}
+                    {sortKey === col.key
+                      ? sortDir === 'asc' ? <ChevronUp size={11} /> : <ChevronDown size={11} />
+                      : <ChevronDown size={11} className="opacity-30" />}
+                  </span>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {paged.map((row) => (
+              <tr key={row.division} className="border-b border-border-base last:border-0 hover:bg-background transition-colors">
+                <td className="px-4 py-2.5 font-medium text-text-primary">{row.division}</td>
+                <td className="px-4 py-2.5 text-text-primary">{row.consumers.toLocaleString()}</td>
+                <td className="px-4 py-2.5 text-text-primary">{row.complaints.toLocaleString()}</td>
+                <td className="px-4 py-2.5 text-text-primary">{row.resolved.toLocaleString()}</td>
+                <td className="px-4 py-2.5">
+                  <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-semibold ${
+                    row.pending > 100 ? 'bg-red-50 text-error' :
+                    row.pending > 50  ? 'bg-yellow-50 text-warning' :
+                                        'bg-green-50 text-success'
+                  }`}>
+                    {row.pending}
+                  </span>
+                </td>
+                <td className="px-4 py-2.5">
+                  <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-semibold ${
+                    row.slaPercent >= 90 ? 'bg-green-50 text-success' :
+                    row.slaPercent >= 75 ? 'bg-yellow-50 text-warning' :
+                                           'bg-red-50 text-error'
+                  }`}>
+                    {row.slaPercent}%
+                  </span>
+                </td>
+                <td className="px-4 py-2.5 font-semibold" style={{ color: resTimeColor(row.resolutionTime) }}>
+                  {row.resolutionTime}d
+                </td>
+                <td className="px-4 py-2.5 text-text-primary">{row.newConnections.toLocaleString()}</td>
+                <td className="px-4 py-2.5 text-text-primary">{row.serviceRequests.toLocaleString()}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {totalPages > 1 && (
+        <div className="px-4 py-2.5 border-t border-border-base flex items-center justify-between text-[12px] text-text-secondary">
+          <span>
+            Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, sorted.length)} of {sorted.length}
+          </span>
+          <div className="flex gap-1">
+            <button
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              disabled={page === 0}
+              className="px-2.5 py-1 border border-border-base rounded hover:bg-background disabled:opacity-40 text-[12px]"
+            >
+              Prev
+            </button>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+              disabled={page === totalPages - 1}
+              className="px-2.5 py-1 border border-border-base rounded hover:bg-background disabled:opacity-40 text-[12px]"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Insights & Exceptions ────────────────────────────────────────────────────
+const INSIGHT_ICONS = {
+  'trending-up':    TrendingUp,
+  'alert-triangle': AlertTriangle,
+  'clock':          Clock,
+  'zap':            Zap,
+  'timer':          Timer,
+} as const
+
+function InsightsSection({ filters }: { filters: Filters }) {
+  const insights = useMemo(() => getInsights(filters), [filters])
+  return (
+    <div className="grid grid-cols-5 gap-4">
+      {insights.map((insight) => {
+        const Icon    = INSIGHT_ICONS[insight.icon]
+        const isError = insight.severity === 'error'
+        return (
+          <div
+            key={insight.id}
+            className={`bg-surface border rounded-xl p-4 ${isError ? 'border-error' : 'border-warning'}`}
+          >
+            <div className={`flex items-center gap-2 mb-2 ${isError ? 'text-error' : 'text-warning'}`}>
+              <Icon size={14} />
+              <span className="text-[11px] font-semibold uppercase tracking-wide leading-tight">
+                {insight.label}
+              </span>
+            </div>
+            <p className="text-[15px] font-bold text-text-primary leading-tight">{insight.value}</p>
+            <p className="text-[12px] text-text-secondary mt-1">{insight.context}</p>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ── Page ─────────────────────────────────────────────────────────────────────
 export function ConsumerServicesPage() {
+  const financialYear = useFilterStore((s) => s.financialYear)
+  const month         = useFilterStore((s) => s.month)
+  const circle        = useFilterStore((s) => s.circle)
+  const division      = useFilterStore((s) => s.division)
+  const subdivision   = useFilterStore((s) => s.subdivision)
+
+  const filters = useMemo<Filters>(
+    () => ({ financialYear, month, circle, division, subdivision }),
+    [financialYear, month, circle, division, subdivision],
+  )
+
+  const kpi = useMemo(() => getKpiData(filters), [filters])
+
+  const KPI_CARDS = [
+    { label: 'Total Consumers',    value: kpi.totalConsumers.toLocaleString(),          trend: '1,243', trendDirection: 'up'   as const, trendIsPositive: true, comparisonLabel: 'new this month'  },
+    { label: 'New Connections',    value: kpi.newConnections.toLocaleString(),           trend: '87',    trendDirection: 'up'   as const, trendIsPositive: true, comparisonLabel: 'vs Last Month'   },
+    { label: 'Complaints Received',value: kpi.complaintsReceived.toLocaleString(),       trend: '312',   trendDirection: 'down' as const, trendIsPositive: true, comparisonLabel: 'vs Last Month'   },
+    { label: 'Complaints Resolved',value: kpi.complaintsResolved.toLocaleString(),       trend: '285',   trendDirection: 'up'   as const, trendIsPositive: true, comparisonLabel: 'vs Last Month'   },
+    { label: 'Open Complaints',    value: kpi.openComplaints.toLocaleString(),           trend: '28',    trendDirection: 'down' as const, trendIsPositive: true, comparisonLabel: 'vs Last Month'   },
+    { label: 'SLA Compliance',     value: `${kpi.slaCompliance}%`,                      trend: '1.2%',  trendDirection: 'up'   as const, trendIsPositive: true, comparisonLabel: 'vs Last Month'   },
+    { label: 'Avg Resolution Time',value: `${kpi.avgResolutionTime}d`,                  trend: '0.3d',  trendDirection: 'down' as const, trendIsPositive: true, comparisonLabel: 'vs Last Month'   },
+    { label: 'Service Requests',   value: kpi.serviceRequestsProcessed.toLocaleString(), trend: '143',   trendDirection: 'up'   as const, trendIsPositive: true, comparisonLabel: 'vs Last Month'   },
+  ]
+
   return (
     <div>
       <PageHeader
         title="Consumer Services & Grievances"
-        subtitle="Consumer base, new connections, and grievance resolution"
+        subtitle="Service delivery performance, complaint management, and SLA monitoring"
       />
       <GlobalFilterBar />
       <div className="py-5">
         <SectionContainer title="Key Metrics">
           <div className="grid grid-cols-4 gap-4">
-            {KPIS.map((k) => <KpiCard key={k.label} {...k} />)}
+            {KPI_CARDS.map((k) => <KpiCard key={k.label} {...k} />)}
           </div>
         </SectionContainer>
-        <SectionContainer title="Analytics">
-          <div className="grid grid-cols-2 gap-4">
-            <ChartCard title="New Connections by Month" timeContext="Apr 2024 – Mar 2025">
-              <ChartPlaceholder label="Bar Chart — New Connections" />
-            </ChartCard>
-            <ChartCard title="Grievance Status Breakdown" timeContext="Current Month">
-              <ChartPlaceholder label="Donut Chart — Grievance Status" />
-            </ChartCard>
-          </div>
+
+        <SectionContainer title="Complaints Dashboard">
+          <ComplaintsSection filters={filters} />
         </SectionContainer>
-        <SectionContainer title="Division-wise Consumer Data">
-          <DataTableCard title="Consumer Summary by Division" columns={COLUMNS} data={[]} />
+
+        <SectionContainer title="SLA Performance">
+          <SlaSection filters={filters} />
         </SectionContainer>
+
+        <SectionContainer title="Service Requests">
+          <ServiceRequestsSection filters={filters} />
+        </SectionContainer>
+
+        <SectionContainer title="Consumer Analytics">
+          <ConsumerAnalyticsSection filters={filters} />
+        </SectionContainer>
+
+        <SectionContainer title="Division Performance Heatmap">
+          <DivisionHeatmap filters={filters} />
+        </SectionContainer>
+
+        <SectionContainer title="Division Operations">
+          <EnhancedTable filters={filters} />
+        </SectionContainer>
+
         <SectionContainer title="Insights & Exceptions">
-          <div className="bg-surface border border-border-base rounded-xl shadow-sm p-4 text-[13px] text-text-secondary">
-            No exceptions flagged for the selected period.
-          </div>
+          <InsightsSection filters={filters} />
         </SectionContainer>
       </div>
     </div>
