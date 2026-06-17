@@ -493,7 +493,7 @@ function DivisionTable({ filters }: { filters: Filters }) {
 
 // ── Attention Required ────────────────────────────────────────────────────────
 
-const INSIGHT_ICONS: Record<MeterInsight['icon'], React.ComponentType<{ size?: number; className?: string }>> = {
+const INSIGHT_ICONS: Record<MeterInsight['icon'], React.ElementType> = {
   'wifi-off':       WifiOff,
   'alert-triangle': AlertTriangle,
   'trending-down':  TrendingDown,

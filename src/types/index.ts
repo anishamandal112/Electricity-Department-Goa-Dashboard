@@ -1,7 +1,7 @@
 import type { ComponentType } from 'react'
 
 export interface NavItem {
-  icon: ComponentType<{ size?: number; className?: string }>
+  icon: ComponentType<{ size?: number | string; className?: string }>
   label: string
   path: string
 }
