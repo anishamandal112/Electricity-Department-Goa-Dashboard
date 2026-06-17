@@ -58,12 +58,32 @@ export interface InsightItem {
   icon: 'trending-up' | 'alert-triangle' | 'clock' | 'zap' | 'timer'
 }
 
+export type HeatmapMetric = 'complaintVolume' | 'slaCompliance' | 'resolutionTime' | 'pendingComplaints'
+
+export interface DivisionMonthCell {
+  division: string
+  month: string
+  value: number
+}
+
+export interface StatusMatrixRow {
+  type: string
+  open: number
+  inProgress: number
+  completed: number
+}
+
 // --- Constants ---
 export const MONTHS = [
   'Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar',
 ]
 
-const DIVISIONS = ['North Goa','South Goa','East Goa','West Goa','Central Goa']
+const DIVISIONS = [
+  'Ponda X', 'Margao XVI', 'Calangute XIV', 'Mapusa XVII', 'Mormugao IV',
+  'Margao V', 'Bicholim XI', 'Mapusa XV', 'Vasco III', 'Quepem VIII',
+  'South Urban VI', 'Cuncolim XVIII', 'Panaji II', 'Pernem XIII',
+  'Panaji I', 'Valpoi XII', 'Sanguem VII', 'Canacona IX',
+]
 
 export const COMPLAINT_CATEGORIES: { name: string; color: string }[] = [
   { name: 'Billing Issues',      color: '#DC2626' },
@@ -94,8 +114,16 @@ function jitter(base: number, seed: number, pct = 0.10): number {
 
 function divFactor(division: string): number {
   const m: Record<string, number> = {
-    'All': 1, 'North Goa': 0.27, 'South Goa': 0.23,
-    'East Goa': 0.19, 'West Goa': 0.17, 'Central Goa': 0.14,
+    'All': 1,
+    'Panaji I':      0.08, 'Panaji II':      0.06,
+    'Vasco III':     0.07, 'Mormugao IV':    0.06,
+    'Margao V':      0.08, 'South Urban VI': 0.05,
+    'Sanguem VII':   0.03, 'Quepem VIII':    0.04,
+    'Canacona IX':   0.03, 'Ponda X':        0.07,
+    'Bicholim XI':   0.05, 'Valpoi XII':     0.04,
+    'Pernem XIII':   0.04, 'Calangute XIV':  0.08,
+    'Mapusa XV':     0.06, 'Margao XVI':     0.06,
+    'Mapusa XVII':   0.06, 'Cuncolim XVIII': 0.06,
   }
   return m[division] ?? 1
 }
@@ -232,6 +260,21 @@ export function getServiceProcessingTime(filters: Filters): ProcessingTimePoint[
   }))
 }
 
+export function getServiceRequestStatusMatrix(filters: Filters): StatusMatrixRow[] {
+  const h  = strHash(filters.financialYear + filters.month + filters.division + 'matrix')
+  const df = divFactor(filters.division)
+  const ff = fyFactor(filters.financialYear)
+  const mf = filters.month === 'All' ? 1 : monthFactor(filters.month)
+  const base = [380, 120, 290, 210, 430, 180]
+  return SERVICE_TYPES.map((type, i) => {
+    const volume     = jitter(Math.round(base[i] * df * ff * mf), h + i)
+    const completed  = Math.round(volume * 0.72)
+    const inProgress = Math.round(volume * 0.18)
+    const open       = Math.max(0, volume - completed - inProgress)
+    return { type, open, inProgress, completed }
+  })
+}
+
 export function getConsumerGrowthTrend(filters: Filters): ConsumerGrowthPoint[] {
   const h  = strHash(filters.financialYear + filters.division + 'growth')
   const df = divFactor(filters.division)
@@ -276,6 +319,32 @@ export function getDivisionHeatmapData(filters: Filters): HeatmapRow[] {
   }))
 }
 
+export function getDivisionMonthHeatmapData(filters: Filters, metric: HeatmapMetric): DivisionMonthCell[] {
+  const h  = strHash(filters.financialYear + metric)
+  const ff = fyFactor(filters.financialYear)
+  return DIVISIONS.flatMap((div, di) =>
+    MONTHS.map((month, mi) => {
+      const seed = h + di * 100 + mi
+      const mf   = monthFactor(month)
+      let value: number
+      if (metric === 'complaintVolume') {
+        const base = 600 + (di % 7) * 80
+        value = jitter(Math.round(base * ff * mf), seed, 0.15)
+      } else if (metric === 'slaCompliance') {
+        const base = 82 + (di % 5) * 3
+        value = Math.min(99, Math.max(65, jitter(Math.round(base * ff), seed, 0.08)))
+      } else if (metric === 'resolutionTime') {
+        const base = 3.5 + (di % 6) * 0.5
+        value = Math.max(1.5, Math.min(9.5, +(base * (1 + (seed % 200) / 1000 - 0.1)).toFixed(1)))
+      } else {
+        const base = 45 + (di % 6) * 20
+        value = jitter(Math.round(base * ff), seed, 0.20)
+      }
+      return { division: div, month, value }
+    })
+  )
+}
+
 export function getDivisionTableData(filters: Filters): TableRow[] {
   const h  = strHash(filters.financialYear + 'table')
   const ff = fyFactor(filters.financialYear)
@@ -299,53 +368,56 @@ export function getDivisionTableData(filters: Filters): TableRow[] {
 }
 
 export function getInsights(filters: Filters): InsightItem[] {
-  const table   = getDivisionTableData(filters)
-  const slaRank = getDivisionSlaRanking(filters)
-  const cats    = getCategoryDistribution(filters)
-  const trend   = getComplaintTrend(filters)
+  const table = getDivisionTableData(filters)
+  const cats  = getCategoryDistribution(filters)
+  const trend = getComplaintTrend(filters)
+  const kpi   = getKpiData(filters)
 
-  const lowestSla   = slaRank[slaRank.length - 1]
+  const lowestSla   = [...table].sort((a, b) => a.slaPercent - b.slaPercent)[0]
   const highestPend = [...table].sort((a, b) => b.pending - a.pending)[0]
-  const highestRT   = [...table].sort((a, b) => b.resolutionTime - a.resolutionTime)[0]
-  const highestVol  = [...table].sort((a, b) => b.complaints - a.complaints)[0]
   const topCat      = [...cats].sort((a, b) => b.value - a.value)[0]
+  const slaBreachCount = Math.round(kpi.openComplaints * 0.34)
 
-  const lastM     = trend[trend.length - 1]
-  const prevM     = trend[trend.length - 2]
-  const growthPct = prevM
+  const h = strHash(filters.financialYear + filters.division + 'catgrowth')
+  const catGrowthPct = Math.max(5, Math.min(45, jitter(18, h, 0.40)))
+
+  const lastM  = trend[trend.length - 1]
+  const prevM  = trend[trend.length - 2]
+  const momPct = prevM
     ? Math.abs(Math.round(((lastM.received - prevM.received) / prevM.received) * 100))
     : 12
+  const detDiv = [...table].sort((a, b) => b.complaints - a.complaints)[0]
 
   return [
     {
-      id: 'complaint-growth', icon: 'trending-up', severity: 'warning',
-      label: 'Highest Complaint Growth',
-      value: highestVol.division,
-      context: `+${growthPct}% vs prev month`,
-    },
-    {
       id: 'lowest-sla', icon: 'alert-triangle', severity: 'error',
-      label: 'Lowest SLA Division',
+      label: 'Lowest SLA Compliance',
       value: lowestSla.division,
-      context: `${lowestSla.compliance}% compliance`,
+      context: `${lowestSla.slaPercent}% compliance`,
     },
     {
       id: 'largest-backlog', icon: 'clock', severity: 'error',
-      label: 'Largest Pending Backlog',
+      label: 'Highest Pending Backlog',
       value: highestPend.division,
       context: `${highestPend.pending.toLocaleString()} open cases`,
     },
     {
       id: 'top-category', icon: 'zap', severity: 'warning',
-      label: 'Top Complaint Category',
+      label: 'Fastest-Growing Category',
       value: topCat.name,
-      context: `${topCat.value.toLocaleString()} complaints`,
+      context: `+${catGrowthPct}% vs prev month`,
     },
     {
-      id: 'highest-restime', icon: 'timer', severity: 'warning',
-      label: 'Highest Resolution Time',
-      value: highestRT.division,
-      context: `${highestRT.resolutionTime} days avg`,
+      id: 'sla-breach', icon: 'timer', severity: 'warning',
+      label: 'Complaints > SLA Threshold',
+      value: slaBreachCount.toLocaleString(),
+      context: 'cases older than 5-day target',
+    },
+    {
+      id: 'deteriorating', icon: 'trending-up', severity: 'warning',
+      label: 'Division Deteriorating MoM',
+      value: detDiv.division,
+      context: `+${momPct}% vs last month`,
     },
   ]
 }
