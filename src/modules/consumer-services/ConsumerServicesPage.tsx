@@ -204,39 +204,26 @@ function ServiceRequestsSection({ filters }: { filters: Filters }) {
 
 // ── Consumer Analytics ───────────────────────────────────────────────────────
 function ConsumerAnalyticsSection({ filters }: { filters: Filters }) {
-  const growth      = useMemo(() => getConsumerGrowthTrend(filters), [filters])
-  const connections = useMemo(() => getConnectionsTrend(filters),    [filters])
-  const categories  = useMemo(() => getConsumerCategoryDist(filters),[filters])
+  const connections = useMemo(() => getConnectionsTrend(filters),     [filters])
+  const categories  = useMemo(() => getConsumerCategoryDist(filters), [filters])
 
   return (
     <div className="grid grid-cols-3 gap-4">
-      <ChartCard title="Consumer Growth Trend" timeContext="Apr – Mar (Financial Year)">
-        <ResponsiveContainer width="100%" height={220}>
-          <AreaChart data={growth} margin={{ top: 4, right: 16, bottom: 0, left: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke={C.grid} vertical={false} />
-            <XAxis dataKey="month" tick={ax} axisLine={false} tickLine={false} />
-            <YAxis tick={ax} axisLine={false} tickLine={false} width={52}
-              tickFormatter={(v) => `${Math.round(v / 1000)}K`} />
-            <Tooltip contentStyle={{ fontSize: 12 }} formatter={(v: number) => v.toLocaleString()} />
-            <Area type="monotone" dataKey="consumers" name="Total Consumers"
-              stroke={C.primary} fill={C.primary} fillOpacity={0.12} strokeWidth={2} dot={false} />
-          </AreaChart>
-        </ResponsiveContainer>
-      </ChartCard>
-
-      <ChartCard title="New Connections vs Disconnections" timeContext="Apr – Mar (Financial Year)">
-        <ResponsiveContainer width="100%" height={220}>
-          <BarChart data={connections} margin={{ top: 4, right: 16, bottom: 0, left: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke={C.grid} vertical={false} />
-            <XAxis dataKey="month" tick={ax} axisLine={false} tickLine={false} />
-            <YAxis tick={ax} axisLine={false} tickLine={false} width={40} />
-            <Tooltip contentStyle={{ fontSize: 12 }} />
-            <Legend wrapperStyle={{ fontSize: 11 }} />
-            <Bar dataKey="newConnections"  name="New Connections" fill={C.success} radius={[2,2,0,0]} />
-            <Bar dataKey="disconnections"  name="Disconnections"  fill={C.error}   radius={[2,2,0,0]} />
-          </BarChart>
-        </ResponsiveContainer>
-      </ChartCard>
+      <div className="col-span-2">
+        <ChartCard title="New Connections vs Disconnections" timeContext="Apr – Mar (Financial Year)">
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={connections} margin={{ top: 4, right: 16, bottom: 0, left: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke={C.grid} vertical={false} />
+              <XAxis dataKey="month" tick={ax} axisLine={false} tickLine={false} />
+              <YAxis tick={ax} axisLine={false} tickLine={false} width={40} />
+              <Tooltip contentStyle={{ fontSize: 12 }} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Bar dataKey="newConnections" name="New Connections" fill={C.success} radius={[2,2,0,0]} />
+              <Bar dataKey="disconnections" name="Disconnections"  fill={C.error}   radius={[2,2,0,0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartCard>
+      </div>
 
       <ChartCard title="Consumer Category Distribution" timeContext="Current Period">
         <ResponsiveContainer width="100%" height={220}>
