@@ -13,6 +13,7 @@ export interface KpiCardProps {
   trendDirection: 'up' | 'down' | 'neutral'
   trendIsPositive: boolean
   comparisonLabel: string
+  benchmark?: string
 }
 
 export interface ChartCardProps {
@@ -33,7 +34,7 @@ export interface DataTableCardProps {
 }
 
 export interface SectionContainerProps {
-  title: string
+  title?: string
   children: React.ReactNode
   action?: React.ReactNode
 }
