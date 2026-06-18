@@ -49,6 +49,24 @@ export interface DistributionInsight {
   icon: 'trending-down' | 'alert-triangle' | 'zap'
 }
 
+export interface EnergyFlowData {
+  procurement: number
+  ehvLoss: number
+  hvLoss: number
+  distLoss: number
+  afterEhv: number
+  afterHv: number
+  sold: number
+  ehvLossPct: number
+  hvLossPct: number
+  distLossPct: number
+  totalLoss: number
+  totalLossPct: number
+  afterEhvPct: number
+  afterHvPct: number
+  soldPct: number
+}
+
 // --- Constants ---
 export const MONTHS = [
   'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar',
@@ -190,6 +208,33 @@ export function getDivisionTableData(filters: Filters): DivisionTableRow[] {
       : 'ok'
     return { division, energyInput, energySold, atcLoss, peakDemand, saifi, saidi, outages, dtFailures, status }
   })
+}
+
+export function getEnergyFlow(filters: Filters): EnergyFlowData {
+  const s = seed(filters.financialYear + filters.month + 'flow')
+  const procurement = parseFloat((148.0 + (s % 160) / 10).toFixed(1))
+  // Loss percentages seeded to sum ~7–8% total
+  const ehvLossPct  = parseFloat((1.00 + (s % 50) / 100).toFixed(2))
+  const hvLossPct   = parseFloat((2.50 + (s % 70) / 100).toFixed(2))
+  const distLossPct = parseFloat((3.00 + (s % 80) / 100).toFixed(2))
+  const ehvLoss  = parseFloat((procurement * ehvLossPct  / 100).toFixed(1))
+  const hvLoss   = parseFloat((procurement * hvLossPct   / 100).toFixed(1))
+  const distLoss = parseFloat((procurement * distLossPct / 100).toFixed(1))
+  const afterEhv = parseFloat((procurement - ehvLoss).toFixed(1))
+  const afterHv  = parseFloat((afterEhv - hvLoss).toFixed(1))
+  const sold     = parseFloat((afterHv - distLoss).toFixed(1))
+  const totalLoss    = parseFloat((ehvLoss + hvLoss + distLoss).toFixed(1))
+  const totalLossPct = parseFloat((ehvLossPct + hvLossPct + distLossPct).toFixed(2))
+  const afterEhvPct  = parseFloat((afterEhv / procurement * 100).toFixed(1))
+  const afterHvPct   = parseFloat((afterHv  / procurement * 100).toFixed(1))
+  const soldPct      = parseFloat((sold     / procurement * 100).toFixed(1))
+  return {
+    procurement, ehvLoss, hvLoss, distLoss,
+    afterEhv, afterHv, sold,
+    ehvLossPct, hvLossPct, distLossPct,
+    totalLoss, totalLossPct,
+    afterEhvPct, afterHvPct, soldPct,
+  }
 }
 
 export function getInsights(filters: Filters): DistributionInsight[] {

@@ -11,7 +11,7 @@ const renderSidebar = (collapsed = false) =>
   )
 
 describe('Sidebar', () => {
-  it('renders all 7 nav item labels when expanded', () => {
+  it('renders all 6 nav item labels when expanded', () => {
     renderSidebar(false)
     expect(screen.getByText('Overview')).toBeInTheDocument()
     expect(screen.getByText('Consumer Services & Grievances')).toBeInTheDocument()
@@ -19,7 +19,6 @@ describe('Sidebar', () => {
     expect(screen.getByText('Distribution Operations')).toBeInTheDocument()
     expect(screen.getByText('Revenue & Billing')).toBeInTheDocument()
     expect(screen.getByText('Procurement & Finance')).toBeInTheDocument()
-    expect(screen.getByText('Infrastructure & Assets')).toBeInTheDocument()
   })
 
   it('hides nav labels when collapsed', () => {

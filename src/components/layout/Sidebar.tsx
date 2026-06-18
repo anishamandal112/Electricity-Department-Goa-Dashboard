@@ -6,7 +6,6 @@ import {
   Zap,
   Receipt,
   ShoppingCart,
-  Building2,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react'
@@ -14,12 +13,11 @@ import type { NavItem } from '../../types'
 
 const NAV_ITEMS: NavItem[] = [
   { icon: LayoutDashboard, label: 'Overview', path: '/overview' },
-  { icon: Users, label: 'Consumer Services & Grievances', path: '/consumer-services' },
-  { icon: Gauge, label: 'Meter Management', path: '/meter-management' },
-  { icon: Zap, label: 'Distribution Operations', path: '/distribution-ops' },
-  { icon: Receipt, label: 'Revenue & Billing', path: '/revenue-billing' },
   { icon: ShoppingCart, label: 'Procurement & Finance', path: '/procurement-finance' },
-  { icon: Building2, label: 'Infrastructure & Assets', path: '/infrastructure-assets' },
+  { icon: Zap, label: 'Distribution Operations', path: '/distribution-ops' },
+  { icon: Gauge, label: 'Meter Management', path: '/meter-management' },
+  { icon: Receipt, label: 'Revenue & Billing', path: '/revenue-billing' },
+  { icon: Users, label: 'Consumer Services & Grievances', path: '/consumer-services' },
 ]
 
 interface SidebarProps {
@@ -34,11 +32,17 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         collapsed ? 'w-16' : 'w-60'
       }`}
     >
-      <div className="h-8 border-b border-border-base flex items-center px-4 shrink-0">
+      <div className={`flex items-center border-b border-border-base shrink-0 ${collapsed ? 'justify-center py-3 px-2' : 'gap-3 py-4 px-4'}`}>
+        <img
+          src="/goa-logo.png"
+          alt="Government of Goa"
+          className={`object-contain shrink-0 transition-all duration-200 ${collapsed ? 'w-8 h-8' : 'w-10 h-10'}`}
+        />
         {!collapsed && (
-          <span className="text-[11px] font-bold text-text-primary tracking-widest uppercase">
-            GED
-          </span>
+          <div>
+            <p className="text-[12px] font-bold text-text-primary leading-tight">Electricity Department</p>
+            <p className="text-[10px] text-text-secondary mt-0.5">Government of Goa</p>
+          </div>
         )}
       </div>
 

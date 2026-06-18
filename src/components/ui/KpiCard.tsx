@@ -7,6 +7,7 @@ export function KpiCard({
   trendDirection,
   trendIsPositive,
   comparisonLabel,
+  benchmark,
 }: KpiCardProps) {
   const arrow =
     trendDirection === 'down' ? '↓' : trendDirection === 'up' ? '↑' : '→'
@@ -22,6 +23,9 @@ export function KpiCard({
         {arrow} {trend}{' '}
         <span className="text-text-secondary font-normal">{comparisonLabel}</span>
       </p>
+      {benchmark && (
+        <p className="text-[12px] text-[#9CA3AF] mt-1">{benchmark}</p>
+      )}
     </div>
   )
 }

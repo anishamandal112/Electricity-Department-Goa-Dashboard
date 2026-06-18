@@ -166,8 +166,9 @@ export function getComplaintTrend(filters: Filters): MonthlyComplaintPoint[] {
   const df = divFactor(filters.division)
   const ff = fyFactor(filters.financialYear)
   return MONTHS.map((month, i) => {
-    const received = jitter(Math.round(4100 * df * ff * monthFactor(month)), h + i)
-    const resolved = jitter(Math.round(received * 0.91), h + i + 50)
+    const base     = Math.round(4100 * df * ff * monthFactor(month))
+    const received = jitter(base, h + i, 0.14)
+    const resolved = jitter(Math.round(base * 0.79), h + i * 19 + 200, 0.12)
     return { month, received, resolved }
   })
 }
@@ -214,10 +215,15 @@ export function getSlaTrend(filters: Filters): SlaPoint[] {
 export function getResTimeTrend(filters: Filters): ResTimePoint[] {
   const h  = strHash(filters.financialYear + filters.division + 'restime')
   const ff = fyFactor(filters.financialYear)
-  return MONTHS.map((_month, i) => ({
-    month: MONTHS[i],
-    days: Math.max(1.5, Math.min(9, +(4.2 * ff * (1 + ((h + i) % 200) / 1000 - 0.1)).toFixed(1))),
-  }))
+  const base = 4.2 * ff
+  const primes = [17, 31, 53, 71, 89, 113, 137, 157, 173, 193, 211, 233]
+  return MONTHS.map((_month, i) => {
+    const noise = (((h ^ (primes[i] * (h + i + 1))) % 1000 + 1000) % 1000) / 500 - 1
+    return {
+      month: MONTHS[i],
+      days: Math.max(1.5, Math.min(9, +(base + noise * 1.4).toFixed(1))),
+    }
+  })
 }
 
 export function getDivisionSlaRanking(filters: Filters): DivisionSlaPoint[] {

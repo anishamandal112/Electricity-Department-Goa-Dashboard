@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react'
 import {
-  ResponsiveContainer, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
+  ResponsiveContainer, AreaChart, Area, BarChart, Bar, Cell,
   CartesianGrid, XAxis, YAxis, Tooltip, Legend, ReferenceLine,
 } from 'recharts'
 import {
@@ -14,9 +14,9 @@ import { SectionContainer } from '../../components/ui/SectionContainer'
 import { KpiCard } from '../../components/ui/KpiCard'
 import { ChartCard } from '../../components/ui/ChartCard'
 import {
-  getMeterKpis, getRolloutTrend, getSmartVsConventional, getInstallProgressByDivision,
-  getHeatmapData, getMeterStatusDist, getTopIssueDivisions, getNewVsReplacement,
-  getAdoptionByCategory, getDivisionTableData, getInsights,
+  getMeterKpis, getRolloutTrend, getInstallProgressByDivision,
+  getHeatmapData, getMeterStatusDist, getNewVsReplacement,
+  getDivisionTableData, getInsights,
   MONTHS,
   type MeterHeatmapMetric, type Filters, type MeterTableRow, type MeterInsight,
 } from './mockData'
@@ -45,87 +45,58 @@ function formatHeatCell(value: number, metric: MeterHeatmapMetric): string {
   return String(value)
 }
 
-// ── Metering Overview ─────────────────────────────────────────────────────────
+// ── Smart Meter Rollout ───────────────────────────────────────────────────────
 
-function MeteringOverviewSection({ filters }: { filters: Filters }) {
+function SmartMeterRolloutSection({ filters }: { filters: Filters }) {
   const rollout     = useMemo(() => getRolloutTrend(filters),              [filters])
-  const svDist      = useMemo(() => getSmartVsConventional(filters),       [filters])
   const installProg = useMemo(() => getInstallProgressByDivision(filters), [filters])
-  const kpi         = useMemo(() => getMeterKpis(filters),                 [filters])
 
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-12 gap-4">
-        {/* Area chart — rollout trend */}
-        <div className="col-span-8">
-          <ChartCard title="Smart Meter Rollout Trend" timeContext="Apr – Mar (Financial Year)">
-            <ResponsiveContainer width="100%" height={220}>
-              <AreaChart data={rollout} margin={{ top: 4, right: 16, bottom: 0, left: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke={C.grid} vertical={false} />
-                <XAxis dataKey="month" tick={ax} axisLine={false} tickLine={false} />
-                <YAxis tick={ax} axisLine={false} tickLine={false} width={52}
-                  tickFormatter={(v) => `${Math.round(v / 1000)}K`} />
-                <Tooltip contentStyle={{ fontSize: 12 }} formatter={(v: number) => v.toLocaleString()} />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Area type="monotone" dataKey="smart" name="Smart" stroke={C.primary}
-                  fill={C.primary} fillOpacity={0.15} strokeWidth={2} dot={false} />
-                <Area type="monotone" dataKey="conventional" name="Conventional" stroke={C.gray}
-                  fill={C.gray} fillOpacity={0.10} strokeWidth={2} dot={false} />
-              </AreaChart>
-            </ResponsiveContainer>
-          </ChartCard>
-        </div>
-
-        {/* Donut — smart vs conventional */}
-        <div className="col-span-4">
-          <ChartCard title="Smart vs Conventional" timeContext="Current Period">
-            <div className="relative" style={{ height: 220 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={svDist} dataKey="value" nameKey="name"
-                    cx="50%" cy="50%" innerRadius={60} outerRadius={88}>
-                    {svDist.map((s) => <Cell key={s.name} fill={s.color} />)}
-                  </Pie>
-                  <Tooltip contentStyle={{ fontSize: 12 }} formatter={(v: number) => v.toLocaleString()} />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
-                </PieChart>
-              </ResponsiveContainer>
-              <div
-                className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none"
-                style={{ paddingBottom: 28 }}
-              >
-                <span className="text-[22px] font-bold text-text-primary">{kpi.smartPenetration}%</span>
-                <span className="text-[10px] text-text-secondary">Smart</span>
-              </div>
-            </div>
-          </ChartCard>
-        </div>
+    <div className="grid grid-cols-12 gap-4">
+      <div className="col-span-7">
+        <ChartCard title="Rollout Trend" timeContext="Apr – Mar (Financial Year)">
+          <ResponsiveContainer width="100%" height={320}>
+            <AreaChart data={rollout} margin={{ top: 4, right: 16, bottom: 0, left: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke={C.grid} vertical={false} />
+              <XAxis dataKey="month" tick={ax} axisLine={false} tickLine={false} />
+              <YAxis tick={ax} axisLine={false} tickLine={false} width={52}
+                tickFormatter={(v) => `${Math.round(v / 1000)}K`} />
+              <Tooltip contentStyle={{ fontSize: 12 }} formatter={(v: number) => v.toLocaleString()} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Area type="monotone" dataKey="smart" name="Smart" stroke={C.primary}
+                fill={C.primary} fillOpacity={0.15} strokeWidth={2} dot={false} />
+              <Area type="monotone" dataKey="conventional" name="Conventional" stroke={C.gray}
+                fill={C.gray} fillOpacity={0.10} strokeWidth={2} dot={false} />
+            </AreaChart>
+          </ResponsiveContainer>
+        </ChartCard>
       </div>
 
-      {/* Horizontal bar — all 18 divisions */}
-      <ChartCard title="Smart Meter Installation Progress by Division" timeContext="Current Period">
-        <ResponsiveContainer width="100%" height={420}>
-          <BarChart data={installProg} layout="vertical"
-            margin={{ top: 4, right: 56, bottom: 4, left: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke={C.grid} horizontal={false} />
-            <XAxis type="number" tick={ax} axisLine={false} tickLine={false}
-              domain={[0, 65]} unit="%" />
-            <YAxis dataKey="division" type="category" tick={ax} axisLine={false}
-              tickLine={false} width={130} />
-            <Tooltip contentStyle={{ fontSize: 12 }} formatter={(v: number) => `${v}%`} />
-            <ReferenceLine x={30} stroke={C.warning} strokeDasharray="4 2"
-              label={{ value: 'Target 30%', fill: C.warning, fontSize: 10, position: 'right' }} />
-            <Bar dataKey="smartPct" name="Smart %" radius={[0, 2, 2, 0]} maxBarSize={14}>
-              {installProg.map((d) => (
-                <Cell
-                  key={d.division}
-                  fill={d.smartPct >= 30 ? C.success : d.smartPct >= 20 ? C.warning : C.error}
-                />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      </ChartCard>
+      <div className="col-span-5">
+        <ChartCard title="Installation Progress by Division" timeContext="Current Period">
+          <ResponsiveContainer width="100%" height={320}>
+            <BarChart data={installProg} layout="vertical" barCategoryGap={4}
+              margin={{ top: 4, right: 48, bottom: 4, left: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke={C.grid} horizontal={false} />
+              <XAxis type="number" tick={ax} axisLine={false} tickLine={false}
+                domain={[0, 65]} unit="%" />
+              <YAxis dataKey="division" type="category" tick={{ fontSize: 9, fill: '#6B7280' }} axisLine={false}
+                tickLine={false} width={130} interval={0} />
+              <Tooltip contentStyle={{ fontSize: 12 }} formatter={(v: number) => `${v}%`} />
+              <Bar dataKey="smartPct" name="Smart %" radius={[0, 2, 2, 0]} maxBarSize={5}>
+                {installProg.map((d) => (
+                  <Cell
+                    key={d.division}
+                    fill={d.smartPct >= 30 ? C.success : d.smartPct >= 20 ? C.warning : C.error}
+                  />
+                ))}
+              </Bar>
+              <ReferenceLine x={30} stroke={C.warning} strokeDasharray="4 2"
+                label={{ value: 'Target 30%', fill: C.warning, fontSize: 10, position: 'right' }} />
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartCard>
+      </div>
     </div>
   )
 }
@@ -222,95 +193,67 @@ function CommunicationHeatmap({ filters }: { filters: Filters }) {
   )
 }
 
-// ── Meter Health & Exceptions ─────────────────────────────────────────────────
+// ── Meter Health Summary ──────────────────────────────────────────────────────
 
-function MeterHealthSection({ filters }: { filters: Filters }) {
-  const statusDist = useMemo(() => getMeterStatusDist(filters),    [filters])
-  const topIssues  = useMemo(() => getTopIssueDivisions(filters),  [filters])
+const STATUS_META: { key: string; label: string; color: string; textColor: string; bgColor: string }[] = [
+  { key: 'Active',            label: 'Active',            color: '#16A34A', textColor: 'text-success',         bgColor: 'bg-green-50'  },
+  { key: 'Faulty',            label: 'Faulty',            color: '#DC2626', textColor: 'text-error',           bgColor: 'bg-red-50'    },
+  { key: 'Non-Communicating', label: 'Non-Communicating', color: '#F59E0B', textColor: 'text-warning',         bgColor: 'bg-yellow-50' },
+  { key: 'Tampered',          label: 'Tampered',          color: '#7C3AED', textColor: 'text-purple-700',      bgColor: 'bg-purple-50' },
+  { key: 'Disconnected',      label: 'Disconnected',      color: '#9CA3AF', textColor: 'text-text-secondary',  bgColor: 'bg-gray-50'   },
+]
+
+function MeterHealthSummary({ filters }: { filters: Filters }) {
+  const statusDist = useMemo(() => getMeterStatusDist(filters), [filters])
+  const total      = statusDist.reduce((s, d) => s + d.value, 0)
+  const byName     = Object.fromEntries(statusDist.map((d) => [d.name, d.value]))
 
   return (
-    <div className="grid grid-cols-12 gap-4">
-      <div className="col-span-4">
-        <ChartCard title="Meter Status Distribution" timeContext="Current Period">
-          <ResponsiveContainer width="100%" height={220}>
-            <PieChart>
-              <Pie data={statusDist} dataKey="value" nameKey="name"
-                cx="50%" cy="50%" innerRadius={55} outerRadius={82}>
-                {statusDist.map((s) => <Cell key={s.name} fill={s.color} />)}
-              </Pie>
-              <Tooltip contentStyle={{ fontSize: 12 }} formatter={(v: number) => v.toLocaleString()} />
-              <Legend wrapperStyle={{ fontSize: 11 }} iconSize={10} />
-            </PieChart>
-          </ResponsiveContainer>
-        </ChartCard>
+    <div className="bg-surface border border-border-base rounded-xl shadow-sm overflow-hidden">
+      <div className="px-4 py-3 border-b border-border-base">
+        <h3 className="text-[14px] font-semibold text-text-primary">Meter Health Summary</h3>
+        <p className="text-[12px] text-text-secondary mt-0.5">Fleet status snapshot — current period</p>
       </div>
-
-      <div className="col-span-8">
-        <ChartCard title="Top Divisions with Meter Issues" timeContext="Faulty + Non-Communicating">
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={topIssues} layout="vertical"
-              margin={{ top: 4, right: 40, bottom: 4, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke={C.grid} horizontal={false} />
-              <XAxis type="number" tick={ax} axisLine={false} tickLine={false} />
-              <YAxis dataKey="division" type="category" tick={ax} axisLine={false}
-                tickLine={false} width={130} />
-              <Tooltip contentStyle={{ fontSize: 12 }} />
-              <Bar dataKey="value" name="Faulty + Non-Comm"
-                fill={C.error} radius={[0, 2, 2, 0]} maxBarSize={22} />
-            </BarChart>
-          </ResponsiveContainer>
-        </ChartCard>
+      <div className="divide-y divide-border-base">
+        {STATUS_META.map(({ key, label, textColor, bgColor }) => {
+          const count = byName[key] ?? 0
+          const pct   = total > 0 ? ((count / total) * 100).toFixed(1) : '0.0'
+          return (
+            <div key={key} className="flex items-center justify-between px-4 py-3">
+              <span className="text-[13px] font-medium text-text-primary">{label}</span>
+              <div className="flex items-center gap-3">
+                <span className="text-[13px] text-text-secondary">{count.toLocaleString()}</span>
+                <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-semibold ${bgColor} ${textColor}`}>
+                  {pct}%
+                </span>
+              </div>
+            </div>
+          )
+        })}
       </div>
     </div>
   )
 }
 
-// ── Consumer Metering Analytics ───────────────────────────────────────────────
+// ── Meter Operations ──────────────────────────────────────────────────────────
 
-function ConsumerMeteringSection({ filters }: { filters: Filters }) {
-  const newVsRepl = useMemo(() => getNewVsReplacement(filters),   [filters])
-  const adoption  = useMemo(() => getAdoptionByCategory(filters), [filters])
-
-  const avgAdoption = Math.round(adoption.reduce((s, c) => s + c.smartPct, 0) / adoption.length)
+function MeterOperationsSection({ filters }: { filters: Filters }) {
+  const newVsRepl = useMemo(() => getNewVsReplacement(filters), [filters])
 
   return (
-    <div className="grid grid-cols-12 gap-4">
-      <div className="col-span-8">
-        <ChartCard title="New Meter Installations vs Replacements" timeContext="Apr – Mar (Financial Year)">
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={newVsRepl} margin={{ top: 4, right: 16, bottom: 0, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke={C.grid} vertical={false} />
-              <XAxis dataKey="month" tick={ax} axisLine={false} tickLine={false} />
-              <YAxis tick={ax} axisLine={false} tickLine={false} width={44} />
-              <Tooltip contentStyle={{ fontSize: 12 }} />
-              <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Bar dataKey="newInstalls"  name="New Installations" fill={C.primary} radius={[2, 2, 0, 0]} />
-              <Bar dataKey="replacements" name="Replacements"       fill={C.orange}  radius={[2, 2, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </ChartCard>
-      </div>
-
-      <div className="col-span-4">
-        <ChartCard title="Smart Adoption by Consumer Category" timeContext="Current Period">
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={adoption} layout="vertical"
-              margin={{ top: 4, right: 48, bottom: 4, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke={C.grid} horizontal={false} />
-              <XAxis type="number" tick={ax} axisLine={false} tickLine={false}
-                domain={[0, 100]} unit="%" />
-              <YAxis dataKey="category" type="category" tick={ax} axisLine={false}
-                tickLine={false} width={80} />
-              <Tooltip contentStyle={{ fontSize: 12 }} formatter={(v: number) => `${v}%`} />
-              <ReferenceLine x={avgAdoption} stroke={C.warning} strokeDasharray="4 2"
-                label={{ value: 'Avg', fill: C.warning, fontSize: 10, position: 'right' }} />
-              <Bar dataKey="smartPct" name="Smart %" fill={C.teal}
-                radius={[0, 2, 2, 0]} maxBarSize={20} />
-            </BarChart>
-          </ResponsiveContainer>
-        </ChartCard>
-      </div>
-    </div>
+    <ChartCard title="New Meter Installations vs Replacements" timeContext="Apr – Mar (Financial Year)">
+      <ResponsiveContainer width="100%" height={220}>
+        <BarChart data={newVsRepl} margin={{ top: 4, right: 16, bottom: 0, left: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke={C.grid} vertical={false} />
+          <XAxis dataKey="month" tick={ax} axisLine={false} tickLine={false} />
+          <YAxis tick={ax} axisLine={false} tickLine={false} width={44} />
+          <Tooltip contentStyle={{ fontSize: 12 }} />
+          <Legend wrapperStyle={{ fontSize: 11 }} />
+          <Bar dataKey="newInstalls"  name="New Installations" fill={C.primary} radius={[2, 2, 0, 0]} />
+          <Bar dataKey="replacements" name="Replacements"       fill={C.orange}  radius={[2, 2, 0, 0]} />
+        </BarChart>
+      </ResponsiveContainer>
+    </ChartCard>
   )
 }
 
@@ -547,7 +490,7 @@ export function MeterManagementPage() {
   const KPI_CARDS = [
     { label: 'Total Installed Meters',     value: kpi.totalMeters.toLocaleString(),   trend: '1,100', trendDirection: 'up'   as const, trendIsPositive: true,  comparisonLabel: 'vs Last Month' },
     { label: 'Smart Meters Installed',     value: kpi.smartMeters.toLocaleString(),   trend: '2,840', trendDirection: 'up'   as const, trendIsPositive: true,  comparisonLabel: 'vs Last Month' },
-    { label: 'Smart Meter Penetration',    value: `${kpi.smartPenetration}%`,         trend: '0.9%',  trendDirection: 'up'   as const, trendIsPositive: true,  comparisonLabel: 'vs Last Month' },
+    { label: 'Smart Meter Penetration',    value: `${kpi.smartPenetration}%`,         trend: '0.9%',  trendDirection: 'up'   as const, trendIsPositive: true,  comparisonLabel: 'vs Last Month', benchmark: 'RDSS Target: 100%' },
     { label: 'Reading Success Rate',       value: `${kpi.readSuccessRate}%`,          trend: '0.2%',  trendDirection: 'up'   as const, trendIsPositive: true,  comparisonLabel: 'vs Last Month' },
     { label: 'Communication Success Rate', value: `${kpi.commSuccessRate}%`,          trend: '0.4%',  trendDirection: 'down' as const, trendIsPositive: false, comparisonLabel: 'vs Last Month' },
     { label: 'Faulty / Non-Communicating', value: kpi.faultyNonComm.toLocaleString(), trend: '130',   trendDirection: 'down' as const, trendIsPositive: true,  comparisonLabel: 'vs Last Month' },
@@ -558,29 +501,33 @@ export function MeterManagementPage() {
       <PageHeader
         title="Meter Management"
         subtitle="Smart metering deployment, communication performance, and meter health monitoring"
-      />
-      <GlobalFilterBar />
+      >
+        <GlobalFilterBar />
+      </PageHeader>
       <div className="py-5">
-        <SectionContainer title="KPI Overview">
+        <SectionContainer>
           <div className="grid grid-cols-6 gap-4">
             {KPI_CARDS.map((k) => <KpiCard key={k.label} {...k} />)}
           </div>
         </SectionContainer>
 
-        <SectionContainer title="Metering Overview">
-          <MeteringOverviewSection filters={filters} />
+        <SectionContainer title="Smart Meter Rollout">
+          <SmartMeterRolloutSection filters={filters} />
         </SectionContainer>
 
         <SectionContainer title="Smart Meter Communication Performance">
           <CommunicationHeatmap filters={filters} />
         </SectionContainer>
 
-        <SectionContainer title="Meter Health & Exceptions">
-          <MeterHealthSection filters={filters} />
-        </SectionContainer>
-
-        <SectionContainer title="Consumer Metering Analytics">
-          <ConsumerMeteringSection filters={filters} />
+        <SectionContainer title="Meter Health Summary">
+          <div className="grid grid-cols-12 gap-4">
+            <div className="col-span-4">
+              <MeterHealthSummary filters={filters} />
+            </div>
+            <div className="col-span-8">
+              <MeterOperationsSection filters={filters} />
+            </div>
+          </div>
         </SectionContainer>
 
         <SectionContainer title="Division Performance Table">

@@ -1,9 +1,9 @@
 import React, { useMemo, useState } from 'react'
 import {
-  ResponsiveContainer, AreaChart, Area, LineChart, Line, BarChart, Bar, Cell,
+  ResponsiveContainer, AreaChart, Area, LineChart, Line, BarChart, Bar,
   CartesianGrid, XAxis, YAxis, Tooltip, Legend, ReferenceLine,
 } from 'recharts'
-import { TrendingDown, AlertTriangle, Zap, ChevronUp, ChevronDown, Search } from 'lucide-react'
+import { TrendingDown, AlertTriangle, Zap, ChevronUp, ChevronDown, Search, ChevronRight, Activity, CheckCircle } from 'lucide-react'
 import { useFilterStore } from '../../store/filterStore'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { GlobalFilterBar } from '../../components/filters/GlobalFilterBar'
@@ -11,9 +11,9 @@ import { SectionContainer } from '../../components/ui/SectionContainer'
 import { KpiCard } from '../../components/ui/KpiCard'
 import { ChartCard } from '../../components/ui/ChartCard'
 import {
-  getDistributionKpis, getEnergyTrend, getAtcLossTrend, getDivisionAtcRanking,
-  getReliabilityTrend, getOutageTrend, getDtLoadingDistribution, getTopDtFailureDivisions,
-  getDivisionHeatmapData, getDivisionTableData, getInsights,
+  getDistributionKpis, getEnergyTrend, getAtcLossTrend,
+  getReliabilityTrend, getOutageTrend,
+  getDivisionHeatmapData, getDivisionTableData, getInsights, getEnergyFlow,
   MONTHS,
   type DivisionHeatmapMetric, type Filters, type DivisionTableRow, type DistributionInsight,
 } from './mockData'
@@ -46,78 +46,178 @@ function formatHeatCell(value: number, metric: DivisionHeatmapMetric): string {
 type SortDir = 'asc' | 'desc'
 type SortKey = keyof Omit<DivisionTableRow, 'status'>
 
-// ── Energy & Loss Analytics ───────────────────────────────────────────────────
+// ── Energy Flow ───────────────────────────────────────────────────────────────
 
-function atcBarColor(value: number): string {
-  return value < 15 ? C.success : value < 25 ? C.warning : C.error
-}
-
-function EnergyLossSection({ filters }: { filters: Filters }) {
-  const energyTrend  = useMemo(() => getEnergyTrend(filters),        [filters])
-  const atcTrend     = useMemo(() => getAtcLossTrend(filters),       [filters])
-  const divisionRank = useMemo(() => getDivisionAtcRanking(filters), [filters])
+function EnergyFlowSection({ filters }: { filters: Filters }) {
+  const d = useMemo(() => getEnergyFlow(filters), [filters])
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-12 gap-4">
-        <div className="col-span-7">
-          <ChartCard title="Energy Input vs Energy Sold" timeContext="Apr – Mar (Financial Year)">
-            <ResponsiveContainer width="100%" height={220}>
-              <AreaChart data={energyTrend} margin={{ top: 4, right: 16, bottom: 0, left: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke={C.grid} vertical={false} />
-                <XAxis dataKey="month" tick={ax} axisLine={false} tickLine={false} />
-                <YAxis tick={ax} axisLine={false} tickLine={false} width={60}
-                  tickFormatter={(v) => `${v} MU`} />
-                <Tooltip contentStyle={{ fontSize: 12 }} formatter={(v: number) => `${v} MU`} />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Area type="monotone" dataKey="energyInput" name="Energy Input"
-                  stroke={C.primary} fill={C.primary} fillOpacity={0.15} strokeWidth={2} dot={false} />
-                <Area type="monotone" dataKey="energySold" name="Energy Sold"
-                  stroke={C.success} fill={C.success} fillOpacity={0.15} strokeWidth={2} dot={false} />
-              </AreaChart>
-            </ResponsiveContainer>
-          </ChartCard>
+      {/* Pipeline row */}
+      <div className="flex items-stretch gap-0">
+        {/* Node: Power Procurement */}
+        <div className="flex-1 min-w-0 rounded-xl border-2 border-blue-400 bg-blue-50 p-4 flex flex-col items-center text-center">
+          <Zap size={18} className="text-blue-500 mb-1.5" />
+          <span className="text-[10px] font-bold uppercase tracking-widest text-blue-600 leading-tight">
+            Power Procurement
+          </span>
+          <span className="text-[26px] font-bold text-text-primary leading-none mt-2">
+            {d.procurement.toLocaleString()}
+          </span>
+          <span className="text-[11px] text-text-secondary mt-0.5">MU</span>
+          <span className="text-[11px] text-text-secondary mt-1">100%</span>
         </div>
 
-        <div className="col-span-5">
-          <ChartCard title="AT&C Loss Trend" timeContext="Apr – Mar (Financial Year)">
-            <ResponsiveContainer width="100%" height={220}>
-              <LineChart data={atcTrend} margin={{ top: 4, right: 16, bottom: 0, left: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke={C.grid} vertical={false} />
-                <XAxis dataKey="month" tick={ax} axisLine={false} tickLine={false} />
-                <YAxis tick={ax} axisLine={false} tickLine={false} width={40}
-                  tickFormatter={(v) => `${v}%`} domain={[8, 32]} />
-                <Tooltip contentStyle={{ fontSize: 12 }} formatter={(v: number) => `${v}%`} />
-                <ReferenceLine y={15} stroke={C.warning} strokeDasharray="4 2"
-                  label={{ value: 'Target 15%', fill: C.warning, fontSize: 10, position: 'right' }} />
-                <Line type="monotone" dataKey="atcLoss" name="AT&C Loss %"
-                  stroke={C.error} strokeWidth={2} dot={{ r: 3, fill: C.error }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </ChartCard>
+        {/* Connector: EHV Loss */}
+        <div className="flex flex-col items-center justify-center px-2 min-w-[90px]">
+          <span className="text-[9px] font-semibold uppercase tracking-wide text-text-secondary leading-tight text-center">
+            &gt; 33 KV Loss
+          </span>
+          <span className="text-[14px] font-bold text-error leading-none mt-1">
+            −{d.ehvLoss}
+          </span>
+          <span className="text-[10px] text-text-secondary">{d.ehvLossPct}% of input</span>
+          <ChevronRight size={16} className="text-text-secondary mt-1" />
+        </div>
+
+        {/* Node: After EHV */}
+        <div className="flex-1 min-w-0 rounded-xl border border-blue-300 bg-surface p-4 flex flex-col items-center text-center">
+          <Activity size={18} className="text-blue-400 mb-1.5" />
+          <span className="text-[10px] font-bold uppercase tracking-widest text-text-secondary leading-tight">
+            After EHV (&gt; 33 KV)
+          </span>
+          <span className="text-[26px] font-bold text-text-primary leading-none mt-2">
+            {d.afterEhv.toLocaleString()}
+          </span>
+          <span className="text-[11px] text-text-secondary mt-0.5">MU</span>
+          <span className="text-[11px] text-text-secondary mt-1">{d.afterEhvPct}% remains</span>
+        </div>
+
+        {/* Connector: 33 kV Loss */}
+        <div className="flex flex-col items-center justify-center px-2 min-w-[90px]">
+          <span className="text-[9px] font-semibold uppercase tracking-wide text-text-secondary leading-tight text-center">
+            33 KV Loss
+          </span>
+          <span className="text-[14px] font-bold text-error leading-none mt-1">
+            −{d.hvLoss}
+          </span>
+          <span className="text-[10px] text-text-secondary">{d.hvLossPct}% of input</span>
+          <ChevronRight size={16} className="text-text-secondary mt-1" />
+        </div>
+
+        {/* Node: After HV */}
+        <div className="flex-1 min-w-0 rounded-xl border border-blue-300 bg-surface p-4 flex flex-col items-center text-center">
+          <Activity size={18} className="text-blue-400 mb-1.5" />
+          <span className="text-[10px] font-bold uppercase tracking-widest text-text-secondary leading-tight">
+            After HV (33 KV)
+          </span>
+          <span className="text-[26px] font-bold text-text-primary leading-none mt-2">
+            {d.afterHv.toLocaleString()}
+          </span>
+          <span className="text-[11px] text-text-secondary mt-0.5">MU</span>
+          <span className="text-[11px] text-text-secondary mt-1">{d.afterHvPct}% remains</span>
+        </div>
+
+        {/* Connector: 11 kV & LT Loss */}
+        <div className="flex flex-col items-center justify-center px-2 min-w-[90px]">
+          <span className="text-[9px] font-semibold uppercase tracking-wide text-text-secondary leading-tight text-center">
+            11 KV &amp; LT
+          </span>
+          <span className="text-[14px] font-bold text-error leading-none mt-1">
+            −{d.distLoss}
+          </span>
+          <span className="text-[10px] text-text-secondary">{d.distLossPct}% of input</span>
+          <ChevronRight size={16} className="text-text-secondary mt-1" />
+        </div>
+
+        {/* Node: Energy Sold */}
+        <div className="flex-1 min-w-0 rounded-xl border-2 border-green-400 bg-green-50 p-4 flex flex-col items-center text-center">
+          <CheckCircle size={18} className="text-success mb-1.5" />
+          <span className="text-[10px] font-bold uppercase tracking-widest text-success leading-tight">
+            Energy Sold
+          </span>
+          <span className="text-[26px] font-bold text-text-primary leading-none mt-2">
+            {d.sold.toLocaleString()}
+          </span>
+          <span className="text-[11px] text-text-secondary mt-0.5">MU</span>
+          <span className="text-[11px] text-text-secondary mt-1">{d.soldPct}% of input</span>
         </div>
       </div>
 
-      <ChartCard title="Division-wise AT&C Loss Ranking" timeContext="Current Period">
-        <ResponsiveContainer width="100%" height={420}>
-          <BarChart data={divisionRank} layout="vertical"
-            margin={{ top: 4, right: 56, bottom: 4, left: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke={C.grid} horizontal={false} />
-            <XAxis type="number" tick={ax} axisLine={false} tickLine={false}
-              domain={[0, 32]} unit="%" />
-            <YAxis dataKey="division" type="category" tick={ax} axisLine={false}
-              tickLine={false} width={130} />
-            <Tooltip contentStyle={{ fontSize: 12 }} formatter={(v: number) => `${v}%`} />
-            <ReferenceLine x={15} stroke={C.warning} strokeDasharray="4 2"
-              label={{ value: 'Target 15%', fill: C.warning, fontSize: 10, position: 'right' }} />
-            <Bar dataKey="atcLoss" name="AT&C Loss %" radius={[0, 2, 2, 0]} maxBarSize={14}>
-              {divisionRank.map((d) => (
-                <Cell key={d.division} fill={atcBarColor(d.atcLoss)} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      </ChartCard>
+      {/* Summary bar */}
+      <div className="flex items-center justify-between flex-wrap gap-3 px-1">
+        <div className="flex items-center gap-5 flex-wrap">
+          <span className="flex items-center gap-1.5 text-[12px] text-text-secondary">
+            <span className="inline-block w-3 h-3 rounded-sm bg-blue-500" />
+            &gt; 33 kV Loss&nbsp;
+            <span className="font-semibold text-text-primary">{d.ehvLoss} MU ({d.ehvLossPct}%)</span>
+          </span>
+          <span className="flex items-center gap-1.5 text-[12px] text-text-secondary">
+            <span className="inline-block w-3 h-3 rounded-sm bg-cyan-400" />
+            33 kV Loss&nbsp;
+            <span className="font-semibold text-text-primary">{d.hvLoss} MU ({d.hvLossPct}%)</span>
+          </span>
+          <span className="flex items-center gap-1.5 text-[12px] text-text-secondary">
+            <span className="inline-block w-3 h-3 rounded-full bg-error" />
+            11 kV &amp; LT&nbsp;
+            <span className="font-semibold text-text-primary">{d.distLoss} MU ({d.distLossPct}%)</span>
+          </span>
+        </div>
+        <span className="text-[13px] text-text-secondary">
+          Total T&amp;D Loss:&nbsp;
+          <span className="font-bold text-error text-[15px]">
+            {d.totalLoss} MU ({d.totalLossPct}%)
+          </span>
+        </span>
+      </div>
+    </div>
+  )
+}
+
+// ── Energy & Loss Analytics ───────────────────────────────────────────────────
+
+function EnergyLossSection({ filters }: { filters: Filters }) {
+  const energyTrend = useMemo(() => getEnergyTrend(filters),  [filters])
+  const atcTrend    = useMemo(() => getAtcLossTrend(filters), [filters])
+
+  return (
+    <div className="grid grid-cols-12 gap-4">
+      <div className="col-span-7">
+        <ChartCard title="Energy Input vs Energy Sold" timeContext="Apr – Mar (Financial Year)">
+          <ResponsiveContainer width="100%" height={220}>
+            <AreaChart data={energyTrend} margin={{ top: 4, right: 16, bottom: 0, left: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke={C.grid} vertical={false} />
+              <XAxis dataKey="month" tick={ax} axisLine={false} tickLine={false} />
+              <YAxis tick={ax} axisLine={false} tickLine={false} width={60}
+                tickFormatter={(v) => `${v} MU`} />
+              <Tooltip contentStyle={{ fontSize: 12 }} formatter={(v: number) => `${v} MU`} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Area type="monotone" dataKey="energyInput" name="Energy Input"
+                stroke={C.primary} fill={C.primary} fillOpacity={0.15} strokeWidth={2} dot={false} />
+              <Area type="monotone" dataKey="energySold" name="Energy Sold"
+                stroke={C.success} fill={C.success} fillOpacity={0.15} strokeWidth={2} dot={false} />
+            </AreaChart>
+          </ResponsiveContainer>
+        </ChartCard>
+      </div>
+
+      <div className="col-span-5">
+        <ChartCard title="AT&C Loss Trend" timeContext="Apr – Mar (Financial Year)">
+          <ResponsiveContainer width="100%" height={220}>
+            <LineChart data={atcTrend} margin={{ top: 4, right: 16, bottom: 0, left: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke={C.grid} vertical={false} />
+              <XAxis dataKey="month" tick={ax} axisLine={false} tickLine={false} />
+              <YAxis tick={ax} axisLine={false} tickLine={false} width={40}
+                tickFormatter={(v) => `${v}%`} domain={[8, 32]} />
+              <Tooltip contentStyle={{ fontSize: 12 }} formatter={(v: number) => `${v}%`} />
+              <ReferenceLine y={15} stroke={C.warning} strokeDasharray="4 2"
+                label={{ value: 'Target 15%', fill: C.warning, fontSize: 10, position: 'right' }} />
+              <Line type="monotone" dataKey="atcLoss" name="AT&C Loss %"
+                stroke={C.error} strokeWidth={2} dot={{ r: 3, fill: C.error }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </ChartCard>
+      </div>
     </div>
   )
 }
@@ -164,62 +264,6 @@ function NetworkReliabilitySection({ filters }: { filters: Filters }) {
           </BarChart>
         </ResponsiveContainer>
       </ChartCard>
-    </div>
-  )
-}
-
-// ── Distribution Infrastructure ───────────────────────────────────────────────
-
-function DistributionInfraSection({ filters }: { filters: Filters }) {
-  const dtLoading  = useMemo(() => getDtLoadingDistribution(filters), [filters])
-  const topFailure = useMemo(() => getTopDtFailureDivisions(filters), [filters])
-
-  const LOAD_COLORS: Record<string, string> = {
-    Normal:     C.success,
-    Overloaded: C.warning,
-    Critical:   C.error,
-  }
-
-  return (
-    <div className="grid grid-cols-12 gap-4">
-      <div className="col-span-5">
-        <ChartCard title="Transformer Loading Distribution" timeContext="Current Period">
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={dtLoading} layout="vertical"
-              margin={{ top: 4, right: 48, bottom: 4, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke={C.grid} horizontal={false} />
-              <XAxis type="number" tick={ax} axisLine={false} tickLine={false} />
-              <YAxis dataKey="category" type="category" tick={ax} axisLine={false}
-                tickLine={false} width={80} />
-              <Tooltip contentStyle={{ fontSize: 12 }}
-                formatter={(v: number) => `${v.toLocaleString()} DTs`} />
-              <Bar dataKey="count" name="DT Count" radius={[0, 2, 2, 0]} maxBarSize={28}>
-                {dtLoading.map((d) => (
-                  <Cell key={d.category} fill={LOAD_COLORS[d.category] ?? C.gray} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </ChartCard>
-      </div>
-
-      <div className="col-span-7">
-        <ChartCard title="Top Divisions by DT Failures" timeContext="Current Period">
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={topFailure} layout="vertical"
-              margin={{ top: 4, right: 40, bottom: 4, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke={C.grid} horizontal={false} />
-              <XAxis type="number" tick={ax} axisLine={false} tickLine={false} />
-              <YAxis dataKey="division" type="category" tick={ax} axisLine={false}
-                tickLine={false} width={130} />
-              <Tooltip contentStyle={{ fontSize: 12 }}
-                formatter={(v: number) => `${v} failures`} />
-              <Bar dataKey="failures" name="DT Failures"
-                fill={C.error} radius={[0, 2, 2, 0]} maxBarSize={14} />
-            </BarChart>
-          </ResponsiveContainer>
-        </ChartCard>
-      </div>
     </div>
   )
 }
@@ -335,7 +379,7 @@ function DivisionTable({ filters }: { filters: Filters }) {
   const [sortDir, setSortDir] = useState<SortDir>('asc')
   const [search,  setSearch]  = useState('')
   const [page,    setPage]    = useState(0)
-  const PAGE_SIZE = 8
+  const PAGE_SIZE = 5
 
   function handleSort(key: SortKey) {
     if (key === sortKey) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
@@ -525,10 +569,10 @@ export function DistributionOpsPage() {
   const KPI_CARDS = [
     { label: 'Energy Input (MU)',     value: String(kpi.energyInput),     trend: '3.2 MU', trendDirection: 'up'   as const, trendIsPositive: true,  comparisonLabel: 'vs Last Month' },
     { label: 'Energy Sold (MU)',      value: String(kpi.energySold),      trend: '2.1 MU', trendDirection: 'up'   as const, trendIsPositive: true,  comparisonLabel: 'vs Last Month' },
-    { label: 'AT&C Loss %',          value: `${kpi.atcLoss}%`,           trend: '1.2%',   trendDirection: 'down' as const, trendIsPositive: true,  comparisonLabel: 'vs Last Month' },
+    { label: 'AT&C Loss %',          value: `${kpi.atcLoss}%`,           trend: '1.2%',   trendDirection: 'down' as const, trendIsPositive: true,  comparisonLabel: 'vs Last Month', benchmark: 'Benchmark: 12–15%' },
     { label: 'Distribution Loss %',  value: `${kpi.distributionLoss}%`,  trend: '0.8%',   trendDirection: 'down' as const, trendIsPositive: true,  comparisonLabel: 'vs Last Month' },
     { label: 'Peak Demand (MW)',      value: String(kpi.peakDemand),      trend: '8.2 MW', trendDirection: 'up'   as const, trendIsPositive: false, comparisonLabel: 'vs Last Month' },
-    { label: 'Power Availability %', value: `${kpi.powerAvailability}%`, trend: '0.3%',   trendDirection: 'up'   as const, trendIsPositive: true,  comparisonLabel: 'vs Last Month' },
+    { label: 'Power Availability %', value: `${kpi.powerAvailability}%`, trend: '0.3%',   trendDirection: 'up'   as const, trendIsPositive: true,  comparisonLabel: 'vs Last Month', benchmark: 'Goal: 24×7 Supply' },
   ]
 
   return (
@@ -536,13 +580,18 @@ export function DistributionOpsPage() {
       <PageHeader
         title="Distribution Operations"
         subtitle="Energy flow, AT&C losses, network reliability, and division performance"
-      />
-      <GlobalFilterBar />
+      >
+        <GlobalFilterBar />
+      </PageHeader>
       <div className="py-5">
-        <SectionContainer title="KPI Overview">
+        <SectionContainer>
           <div className="grid grid-cols-6 gap-4">
             {KPI_CARDS.map((k) => <KpiCard key={k.label} {...k} />)}
           </div>
+        </SectionContainer>
+
+        <SectionContainer title="Energy Flow">
+          <EnergyFlowSection filters={filters} />
         </SectionContainer>
 
         <SectionContainer title="Energy & Loss Analytics">
@@ -551,10 +600,6 @@ export function DistributionOpsPage() {
 
         <SectionContainer title="Network Reliability">
           <NetworkReliabilitySection filters={filters} />
-        </SectionContainer>
-
-        <SectionContainer title="Distribution Infrastructure">
-          <DistributionInfraSection filters={filters} />
         </SectionContainer>
 
         <SectionContainer title="Division Performance Heatmap">

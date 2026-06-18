@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react'
 import {
-  ResponsiveContainer, ComposedChart, Bar, Line, CartesianGrid, XAxis, YAxis,
+  ResponsiveContainer, Bar, Line, CartesianGrid, XAxis, YAxis,
   Tooltip, Legend, PieChart, Pie, Cell, BarChart,
   RadialBarChart, RadialBar, LineChart, ReferenceLine,
 } from 'recharts'
@@ -50,35 +50,92 @@ function ComplaintsSection({ filters }: { filters: Filters }) {
   const trend      = useMemo(() => getComplaintTrend(filters),       [filters])
   const categories = useMemo(() => getCategoryDistribution(filters), [filters])
 
+  const total = useMemo(() => categories.reduce((s, c) => s + c.value, 0), [categories])
+  const catData = useMemo(() =>
+    [...categories].sort((a, b) => b.value - a.value).map((c) => ({
+      ...c,
+      pct: Math.round((c.value / total) * 100),
+    })),
+    [categories, total],
+  )
+  const maxCatValue = catData[0]?.value ?? 1
+
   return (
-    <div className="grid grid-cols-3 gap-4">
-      <div className="col-span-2">
-        <ChartCard title="Complaints Received vs Resolved" timeContext="Apr – Mar (Financial Year)">
-          <ResponsiveContainer width="100%" height={260}>
-            <ComposedChart data={trend} margin={{ top: 4, right: 16, bottom: 0, left: 0 }}>
+    <div className="bg-surface border border-border-base rounded-xl shadow-sm p-5">
+      <h3 className="text-[15px] font-semibold text-text-primary mb-4">Complaints Overview</h3>
+      <div className="grid grid-cols-3 gap-6 divide-x divide-border-base">
+
+        {/* Left: Line chart */}
+        <div className="col-span-2 pr-6">
+          <p className="text-[12px] font-semibold text-text-secondary mb-1">
+            Complaints Received vs Resolved
+            <span className="font-normal ml-1">(Monthly Trend)</span>
+          </p>
+          {/* Legend */}
+          <div className="flex items-center gap-5 mb-3">
+            <span className="flex items-center gap-1.5 text-[11px] text-text-secondary">
+              <span className="inline-block w-3 h-0.5 bg-[#2563EB] rounded" style={{ position: 'relative' }}>
+                <span className="absolute -top-[3px] left-[3px] w-[6px] h-[6px] rounded-full bg-[#2563EB]" style={{ display: 'inline-block' }} />
+              </span>
+              Received
+            </span>
+            <span className="flex items-center gap-1.5 text-[11px] text-text-secondary">
+              <span className="inline-block w-3 h-0.5 bg-[#9CA3AF] rounded" style={{ position: 'relative' }}>
+                <span className="absolute -top-[3px] left-[3px] w-[6px] h-[6px] rounded-full bg-[#9CA3AF]" style={{ display: 'inline-block' }} />
+              </span>
+              Resolved
+            </span>
+          </div>
+          <p className="text-[10px] text-text-secondary mb-1">No. of Complaints</p>
+          <ResponsiveContainer width="100%" height={220}>
+            <LineChart data={trend} margin={{ top: 4, right: 16, bottom: 0, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke={C.grid} vertical={false} />
               <XAxis dataKey="month" tick={ax} axisLine={false} tickLine={false} />
-              <YAxis tick={ax} axisLine={false} tickLine={false} width={48} />
-              <Tooltip contentStyle={{ fontSize: 12 }} />
-              <Legend wrapperStyle={{ fontSize: 12 }} />
-              <Bar dataKey="received" name="Received" fill={C.error} opacity={0.65} radius={[2,2,0,0]} />
-              <Line type="monotone" dataKey="resolved" name="Resolved" stroke={C.primary} strokeWidth={2} dot={false} />
-            </ComposedChart>
+              <YAxis tick={ax} axisLine={false} tickLine={false} width={44}
+                tickFormatter={(v) => v >= 1000 ? `${v/1000}K` : v} />
+              <Tooltip contentStyle={{ fontSize: 12 }}
+                formatter={(v: number, name: string) => [v.toLocaleString(), name]} />
+              <Line type="monotone" dataKey="received" name="Received"
+                stroke="#2563EB" strokeWidth={2} dot={{ r: 3, fill: '#2563EB', strokeWidth: 0 }} activeDot={{ r: 4 }} />
+              <Line type="monotone" dataKey="resolved" name="Resolved"
+                stroke="#9CA3AF" strokeWidth={2} dot={{ r: 3, fill: '#9CA3AF', strokeWidth: 0 }} activeDot={{ r: 4 }} />
+            </LineChart>
           </ResponsiveContainer>
-        </ChartCard>
-      </div>
+        </div>
 
-      <ChartCard title="Category Distribution" timeContext="Current Period">
-        <ResponsiveContainer width="100%" height={260}>
-          <PieChart>
-            <Pie data={categories} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={55} outerRadius={85}>
-              {categories.map((c) => <Cell key={c.name} fill={c.color} />)}
-            </Pie>
-            <Tooltip contentStyle={{ fontSize: 12 }} formatter={(v: number) => v.toLocaleString()} />
-            <Legend wrapperStyle={{ fontSize: 11 }} />
-          </PieChart>
-        </ResponsiveContainer>
-      </ChartCard>
+        {/* Right: Horizontal bar chart */}
+        <div className="pl-6">
+          <p className="text-[12px] font-semibold text-text-secondary mb-4">
+            Complaint Category Distribution
+            <span className="font-normal ml-1">(Current Period)</span>
+          </p>
+          <div className="space-y-2.5">
+            {catData.map((cat) => {
+              const isMinor = cat.pct < 8
+              return (
+                <div key={cat.name}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[11px] text-text-primary">{cat.name}</span>
+                    <span className="text-[11px] text-text-secondary font-medium">
+                      {cat.value.toLocaleString()} ({cat.pct}%)
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-100 rounded-sm" style={{ height: 8 }}>
+                    <div
+                      className="h-full rounded-sm"
+                      style={{
+                        width: `${(cat.value / maxCatValue) * 100}%`,
+                        backgroundColor: isMinor ? '#9CA3AF' : '#2563EB',
+                      }}
+                    />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+      </div>
     </div>
   )
 }
@@ -142,29 +199,29 @@ function ServiceRequestsSection({ filters }: { filters: Filters }) {
       <div className="col-span-5">
         <ChartCard title="Request Volume by Type" timeContext="Current Period">
           <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={volume} margin={{ top: 4, right: 8, bottom: 56, left: 0 }}>
+            <BarChart data={volume} margin={{ top: 4, right: 8, bottom: 56, left: 0 }} barCategoryGap="35%">
               <CartesianGrid strokeDasharray="3 3" stroke={C.grid} vertical={false} />
               <XAxis dataKey="type" tick={{ ...ax, textAnchor: 'end' }} angle={-35}
                 axisLine={false} tickLine={false} interval={0} height={60} />
               <YAxis tick={ax} axisLine={false} tickLine={false} width={40} />
               <Tooltip contentStyle={{ fontSize: 12 }} />
-              <Bar dataKey="volume" name="Requests" fill={C.primary} radius={[2,2,0,0]} />
+              <Bar dataKey="volume" name="Requests" fill="#7BAFD4" radius={[2,2,0,0]} maxBarSize={20} />
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>
       </div>
 
-      <div className="col-span-4">
+      <div className="col-span-3">
         <ChartCard title="Avg Processing Time by Type" timeContext="Current Period">
           <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={procTime} layout="vertical" margin={{ left: 8, right: 32 }}>
+            <BarChart data={procTime} layout="vertical" margin={{ left: 4, right: 8, top: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke={C.grid} horizontal={false} />
               <XAxis type="number" tick={ax} axisLine={false} tickLine={false} unit="d" />
-              <YAxis dataKey="type" type="category" tick={ax} axisLine={false} tickLine={false} width={120} />
+              <YAxis dataKey="type" type="category" tick={ax} axisLine={false} tickLine={false} width={110} />
               <Tooltip contentStyle={{ fontSize: 12 }} formatter={(v: number) => `${v} days`} />
-              <Bar dataKey="days" name="Days" radius={[0,2,2,0]}>
+              <Bar dataKey="days" name="Days" radius={[0,2,2,0]} maxBarSize={10}>
                 {procTime.map((p) => (
-                  <Cell key={p.type} fill={p.days <= 5 ? C.success : p.days <= 8 ? C.warning : C.error} />
+                  <Cell key={p.type} fill={p.days <= 5 ? '#86C9A3' : p.days <= 8 ? '#F5C97A' : '#F4A5A5'} />
                 ))}
               </Bar>
             </BarChart>
@@ -172,7 +229,7 @@ function ServiceRequestsSection({ filters }: { filters: Filters }) {
         </ChartCard>
       </div>
 
-      <div className="col-span-3">
+      <div className="col-span-4">
         <ChartCard title="Request Status" timeContext="Current Period">
           <div className="overflow-auto" style={{ maxHeight: 220 }}>
             <table className="w-full text-[12px]">
@@ -187,7 +244,7 @@ function ServiceRequestsSection({ filters }: { filters: Filters }) {
               <tbody>
                 {matrix.map((row) => (
                   <tr key={row.type} className="border-b border-border-base last:border-0">
-                    <td className="py-1.5 text-text-primary" style={{ maxWidth: 64, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <td className="py-1.5 text-text-primary">
                       {row.type}
                     </td>
                     <td className={`py-1.5 text-right font-semibold ${
@@ -224,8 +281,8 @@ function ConsumerAnalyticsSection({ filters }: { filters: Filters }) {
               <YAxis tick={ax} axisLine={false} tickLine={false} width={40} />
               <Tooltip contentStyle={{ fontSize: 12 }} />
               <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Bar dataKey="newConnections" name="New Connections" fill={C.success} radius={[2,2,0,0]} />
-              <Bar dataKey="disconnections" name="Disconnections"  fill={C.error}   radius={[2,2,0,0]} />
+              <Bar dataKey="newConnections" name="New Connections" fill="#86C9A3" radius={[2,2,0,0]} maxBarSize={20} />
+              <Bar dataKey="disconnections" name="Disconnections"  fill="#F4A5A5" radius={[2,2,0,0]} maxBarSize={20} />
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>
@@ -549,10 +606,11 @@ export function ConsumerServicesPage() {
       <PageHeader
         title="Consumer Services & Grievances"
         subtitle="Service delivery performance, complaint management, and SLA monitoring"
-      />
-      <GlobalFilterBar />
+      >
+        <GlobalFilterBar />
+      </PageHeader>
       <div className="py-5">
-        <SectionContainer title="Key Metrics">
+        <SectionContainer>
           <div className="grid grid-cols-4 gap-4">
             {KPI_CARDS.map((k) => <KpiCard key={k.label} {...k} />)}
           </div>

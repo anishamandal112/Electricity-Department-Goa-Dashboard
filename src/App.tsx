@@ -6,8 +6,6 @@ import { MeterManagementPage } from './modules/meter-management/MeterManagementP
 import { DistributionOpsPage } from './modules/distribution-ops/DistributionOpsPage'
 import { RevenueBillingPage } from './modules/revenue-billing/RevenueBillingPage'
 import { ProcurementFinancePage } from './modules/procurement-finance/ProcurementFinancePage'
-import { InfrastructureAssetsPage } from './modules/infrastructure-assets/InfrastructureAssetsPage'
-
 export function App() {
   return (
     <BrowserRouter>
@@ -20,7 +18,6 @@ export function App() {
           <Route path="distribution-ops" element={<DistributionOpsPage />} />
           <Route path="revenue-billing" element={<RevenueBillingPage />} />
           <Route path="procurement-finance" element={<ProcurementFinancePage />} />
-          <Route path="infrastructure-assets" element={<InfrastructureAssetsPage />} />
         </Route>
       </Routes>
     </BrowserRouter>
